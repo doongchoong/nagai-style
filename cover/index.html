@@ -2831,6 +2831,10 @@ const NAGAI_CTL_CSS = `
 .nagai-ctl select{font:inherit;font-size:14px;color:inherit;background:transparent;border:1px solid var(--nagai-line);border-radius:8px;padding:4px 6px}
 .nagai-ctl select.nagai-fixed{border-color:var(--nagai-accent);font-weight:600}
 .nagai-ctl select option{color:#10223f;background:#fff}
+.nagai-ctl-random{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.nagai-ctl-random-lbl{font-size:12px;letter-spacing:.08em;color:var(--nagai-muted);margin-right:4px}
+.nagai-ctl .nagai-ctl-random button{background:var(--nagai-accent);border-color:var(--nagai-accent);color:#fff;font-weight:600;padding:6px 14px;border-radius:999px}
+.nagai-ctl .nagai-ctl-random button:first-of-type{background:transparent;color:inherit;border-color:var(--nagai-line)}
 .nagai-ctl-seg{display:inline-flex}
 .nagai-ctl-seg button{border-radius:0}.nagai-ctl-seg button:first-child{border-radius:8px 0 0 8px}.nagai-ctl-seg button:last-child{border-radius:0 8px 8px 0;margin-left:-1px}
 .nagai-ctl-seg button[aria-pressed=true]{background:var(--nagai-accent);border-color:var(--nagai-accent);color:#fff}
@@ -2941,7 +2945,7 @@ function mount(options = {}) {
   if (!canvas || !canvas.getContext) throw new Error('NagaiScene.mount: canvas 요소가 필요해요');
   const ctx = canvas.getContext('2d');
   const controlsEl = pickEl(o.controls);
-  const ui = { info: true, seed: true, jitter: true, wind: true, pause: true, pick: true, aspect: true, save: true, ...o.ui };
+  const ui = { info: true, random: true, seed: true, jitter: true, wind: true, pause: true, pick: true, aspect: true, save: true, ...o.ui };
   const reduceMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const state = { seed: o.seed, jitter: o.jitter, force: { ...o.force }, wind: o.wind, playing: o.autoplay && !reduceMotion };
   const grain = o.grain ? createGrain() : null;
@@ -3053,6 +3057,16 @@ function mount(options = {}) {
     controlsEl.innerHTML = '';
     const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     if (ui.info) { el.info = mk('div', 'nagai-ctl-info'); el.info.setAttribute('aria-live', 'polite'); controlsEl.appendChild(el.info); }
+    if (ui.random) {
+      const g = mk('div', 'nagai-ctl-random'); g.setAttribute('role', 'group'); g.setAttribute('aria-label', '랜덤 장면');
+      g.appendChild(mk('span', 'nagai-ctl-random-lbl', '랜덤'));
+      for (const [mood, name] of [[null, '아무거나'], ['day', '맑은 오후'], ['dusk', '해질녘'], ['evening', '저녁']]) {
+        const b = mk('button', null, name);
+        b.onclick = () => (mood ? api.randomMood(mood) : api.randomize());
+        g.appendChild(b);
+      }
+      controlsEl.appendChild(g);
+    }
     const row = mk('div', 'nagai-ctl-row');
     if (ui.seed) {
       const prev = mk('button', null, '◀'); prev.setAttribute('aria-label', '이전 시드'); prev.onclick = () => api.prev();
@@ -3065,7 +3079,8 @@ function mount(options = {}) {
       el.seed.onchange = applyCode;
       const seedWrap = mk('label', 'nagai-ctl-seed', '시드 '); seedWrap.appendChild(el.seed);
       const next = mk('button', null, '▶'); next.setAttribute('aria-label', '다음 시드'); next.onclick = () => api.next();
-      const rnd = mk('button', null, '새 구도'); rnd.onclick = () => api.randomize();
+      const rnd = ui.random ? null : mk('button', null, '새 구도');           // 랜덤 그룹이 있으면 거기로
+      if (rnd) rnd.onclick = () => api.randomize();
       const copy = mk('button', null, '복사');
       copy.title = '이 장면을 다시 열 수 있는 링크(또는 장면 코드)를 복사';
       copy.onclick = async () => {
@@ -3076,22 +3091,24 @@ function mount(options = {}) {
         copy.textContent = ok ? '복사됨' : '선택됨';
         setTimeout(() => { copy.textContent = '복사'; }, 1400);
       };
-      row.append(prev, seedWrap, next, rnd, copy);
+      row.append(...[prev, seedWrap, next, rnd, copy].filter(Boolean));
     }
     if (ui.jitter) { const b = mk('button', null, '위치만 바꾸기'); b.onclick = () => api.shuffleLayout(); row.appendChild(b); }
+    controlsEl.appendChild(row);
+    const row2 = mk('div', 'nagai-ctl-row');
     if (ui.wind) {
       const lab = mk('label', null, '바람 ');
       const r = document.createElement('input');
       Object.assign(r, { type: 'range', min: 0, max: 1.5, step: 0.05, value: state.wind });
       r.oninput = () => api.setWind(+r.value);
-      lab.appendChild(r); row.appendChild(lab);
+      lab.appendChild(r); row2.appendChild(lab);
     }
-    if (ui.pause) { el.pause = mk('button'); el.pause.onclick = () => api.toggle(); row.appendChild(el.pause); }
+    if (ui.pause) { el.pause = mk('button'); el.pause.onclick = () => api.toggle(); row2.appendChild(el.pause); }
     if (ui.save) {
       const b = mk('button', null, '사진 저장');
       b.title = '지금 장면을 고해상도 PNG 로 저장';
       b.onclick = async () => { b.disabled = true; b.textContent = '저장 중…'; try { await api.savePNG(); } finally { b.disabled = false; b.textContent = '사진 저장'; } };
-      row.appendChild(b);
+      row2.appendChild(b);
     }
     if (ui.aspect) {
       const seg = mk('span', 'nagai-ctl-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', '화면 비율');
@@ -3100,12 +3117,12 @@ function mount(options = {}) {
         const b = mk('button', null, name); b.onclick = () => api.setAspect(a);
         el.aspect[a] = b; seg.appendChild(b);
       }
-      row.appendChild(seg);
+      row2.appendChild(seg);
     }
-    controlsEl.appendChild(row);
+    if (row2.childNodes.length) controlsEl.appendChild(row2);
     if (ui.pick) {
       const det = mk('details');
-      det.appendChild(mk('summary', null, '구도 고르기'));
+      det.appendChild(mk('summary', null, '상세 구도 고르기'));
       det.appendChild(mk('p', 'nagai-ctl-hint', '자동은 시드대로, 고른 항목은 시드를 바꿔도 유지돼요'));
       const grid = mk('div', 'nagai-ctl-grid');
       el.selects = {};
@@ -3180,7 +3197,21 @@ function mount(options = {}) {
     setSeed(n) { state.seed = Math.max(1, Math.floor(n)); state.jitter = null; compose(); return api; },
     next() { return api.setSeed(state.seed + 1); },
     prev() { return api.setSeed(state.seed - 1); },
-    randomize() { return api.setSeed(1 + Math.floor(Math.random() * 99999)); },
+    randomize() { delete state.force.sky; return api.setSeed(1 + Math.floor(Math.random() * 99999)); },
+    // mood: 'day' (짙은·맑은 하늘) | 'dusk' (분홍 해질녘) | 'evening' (연보라 저녁)
+    randomMood(mood) {
+      const want = { day: ['deep', 'bright'], dusk: ['dusk'], evening: ['violet'] }[mood];
+      if (!want) return api.randomize();
+      const force = { ...state.force }; delete force.sky;               // 다른 고정 항목(테마 등)은 지킨다
+      for (let i = 0; i < 400; i++) {
+        const seed = 1 + Math.floor(Math.random() * 99999);
+        if (want.includes(composeScene(seed, { force, width: o.designWidth, height: o.designHeight }).choice.sky)) {
+          state.force = force; return api.setSeed(seed);
+        }
+      }
+      state.force = { ...force, sky: want[want.length - 1] };          // 못 찾으면 하늘만 고정
+      return api.setSeed(1 + Math.floor(Math.random() * 99999));
+    },
     shuffleLayout(j) { state.jitter = j ?? 1 + Math.floor(Math.random() * 999); compose(); return api; },
     setForce(f) { for (const [k, v] of Object.entries(f)) { if (v == null || v === '') delete state.force[k]; else state.force[k] = v; } compose(); return api; },
     clearForce() { state.force = {}; compose(); return api; },
@@ -3277,7 +3308,7 @@ if (typeof document !== 'undefined') {
 
 </script>
 <script>
-const CONFIG = {"force": {"sky": "dusk", "theme": "poolside"}, "title": "Summer Breeze", "artist": "Nagai Scene", "small": "STEREO", "font": "script", "pos": "tl", "seed": 3};
+const CONFIG = {"title": "Summer Breeze", "artist": "Nagai Scene", "small": "STEREO", "font": "script", "pos": "tl", "seed": 572};
 
 // ── 장면: 정사각, 컨트롤은 패널 안에 (비율·사진 저장 버튼은 커버 페이지가 맡는다)
 const nagai = window.nagai = NagaiScene.mount({
