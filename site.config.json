@@ -4,5 +4,6 @@
   "seed": 62619,
   "aspect": "auto",
   "layout": "fullscreen",
-  "controls": true
+  "controls": true,
+  "lib_src": "/nagai-scene.min.js"
 }

@@ -14,11 +14,10 @@ nagai-style 절차적 생성
 
 ## 다시 만들기
 
-`index.html` 은 `nagai-motion` 스킬의 `build_page.py` 로 `site.config.json` 에서 만든다.
+페이지는 `nagai-motion` 스킬의 `build_page.py` 로 `site.config.json`, `cover.config.json` 에서 만든다. 두 페이지 모두 라이브러리를 품지 않고 `/nagai-scene.min.js?v=버전` 을 링크로 건다 (한 번 받으면 두 페이지가 같이 쓴다).
 
 ```bash
-python ../.claude/skills/nagai-motion/scripts/build_page.py site.config.json index.html
-python ../.claude/skills/nagai-motion/scripts/build_page.py cover.config.json cover/index.html
+./build.sh    # 스킬의 최신 min 복사 + 두 페이지 빌드
 ```
 
 ## 배포

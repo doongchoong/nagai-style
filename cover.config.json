@@ -6,5 +6,6 @@
   "artist": "Nagai Scene",
   "small": "STEREO",
   "font": "script",
-  "pos": "tl"
+  "pos": "tl",
+  "lib_src": "/nagai-scene.min.js"
 }
