@@ -1,0 +1,8 @@
+{
+  "title": "Nagai Scene",
+  "description": "나가이 히로시 풍 80년대 시티팝 모션그래픽. 시드와 구도를 바꿔 보고 사진으로 저장할 수 있다.",
+  "seed": 62619,
+  "aspect": "auto",
+  "layout": "fullscreen",
+  "controls": true
+}
