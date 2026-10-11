@@ -26,10 +26,21 @@ body{background:var(--bg);color:var(--ink);font-family:"Jost","Pretendard","Appl
 .sleeve{position:relative;width:min(100%,calc(100dvh - 64px),720px);aspect-ratio:1;transition:transform .5s ease,width .5s ease}
 /* 레코드를 같이 보일 때는 커버를 줄이고 왼쪽으로 비켜서, 커버와 레코드가 둘 다 무대 안에 들어오게 */
 .sleeve.with-record{width:min(82%,calc(100dvh - 64px),640px);transform:translateX(-11%)}
-.disc{position:absolute;top:3%;left:3%;width:94%;aspect-ratio:1;border-radius:50%;opacity:0;transition:transform .5s ease,opacity .3s;
-  background:radial-gradient(circle,var(--label) 0 15%,#101010 15.5% 16.5%,#1b1b1b 17% 100%);box-shadow:0 10px 30px rgba(0,0,0,.35)}
-.disc::after{content:"";position:absolute;inset:0;border-radius:50%;
+.disc{position:absolute;top:3%;left:3%;width:94%;aspect-ratio:1;border-radius:50%;opacity:0;transition:transform .5s ease,opacity .3s;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+/* 도는 판: 홈 + 라벨(인쇄 글자가 같이 돌아서 회전이 보인다) */
+.vinyl{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,var(--label) 0 15%,#101010 15.5% 16.5%,#1b1b1b 17% 100%)}
+.vinyl::after{content:"";position:absolute;inset:0;border-radius:50%;
   background:repeating-radial-gradient(circle,rgba(255,255,255,.05) 0 1px,transparent 1px 4px),radial-gradient(circle,#000 0 1.2%,transparent 1.3%)}
+.vinyl svg{position:absolute;inset:0;width:100%;height:100%}
+/* 판 위의 빛 반사는 판이 돌아도 제자리 */
+.glare{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:conic-gradient(from 20deg,transparent 0 25deg,rgba(255,255,255,.09) 40deg,transparent 55deg 205deg,rgba(255,255,255,.06) 220deg,transparent 235deg)}
+/* 톤암: 음악이 있을 때만. 재생하면 판 위로 돌아 들어와 바늘을 내린다 */
+.arm{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;display:none;filter:drop-shadow(0 4px 4px rgba(0,0,0,.35))}
+.has-music .arm{display:block}
+.has-music .disc{cursor:pointer}
+#arm-g{transform-origin:97px 6px;transform:rotate(-42deg);transition:transform 1s cubic-bezier(.45,.05,.25,1)}
+.playing #arm-g{transform:rotate(0deg)}
 .with-record .disc{opacity:1;transform:translateX(24%)}
 .cover{position:absolute;inset:0;box-shadow:0 18px 40px rgba(0,0,0,.28),0 2px 6px rgba(0,0,0,.2)}
 .cover canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
@@ -57,6 +68,13 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
 .save{font:inherit;font-size:16px;font-weight:600;color:#fff;background:var(--accent);border:0;border-radius:10px;padding:12px;cursor:pointer}
 .save:disabled{opacity:.6;cursor:default}
 .hint{font-size:12px;color:var(--muted);margin:0}
+[hidden]{display:none!important}
+.player{display:flex;align-items:center;gap:12px}
+.play{font:inherit;font-size:15px;font-weight:600;color:#fff;background:var(--accent);border:0;border-radius:999px;padding:8px 16px 8px 13px;display:inline-flex;gap:7px;align-items:center;cursor:pointer;flex:none}
+.play svg{width:15px;height:15px}
+.track{display:flex;flex-direction:column;min-width:0}
+.track b{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.track span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 #scene-ctl{font-size:14px}
 #scene-ctl.nagai-ctl{--nagai-accent:var(--accent)}   /* 장면 컨트롤 버튼도 커버 저장 버튼과 같은 산호색 */
 #scene-ctl .nagai-ctl{margin:0}
@@ -77,7 +95,22 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
 <div class="app">
   <div class="stage">
     <div class="sleeve" id="sleeve">
-      <div class="disc" id="disc" aria-hidden="true"></div>
+      <div class="disc" id="disc" aria-hidden="true">
+        <div class="vinyl" id="vinyl">
+          <svg viewBox="0 0 100 100"><defs><path id="lbl-arc" d="M50,50 m-7.6,0 a7.6,7.6 0 1,1 15.2,0 a7.6,7.6 0 1,1 -15.2,0"/></defs>
+            <text font-family="Jost, sans-serif" font-size="1.9" font-weight="600" letter-spacing=".25" fill="rgba(20,16,28,.72)"><textPath href="#lbl-arc" id="lbl-text">NAGAI STYLE · SIDE A · 33⅓ RPM</textPath></text>
+            <rect x="46.2" y="53.4" width="7.6" height=".9" rx=".4" fill="rgba(20,16,28,.55)"/></svg>
+        </div>
+        <div class="glare"></div>
+        <svg class="arm" viewBox="0 0 100 100"><g id="arm-g">
+          <circle cx="97" cy="6" r="5.2" fill="#9aa3ad"/><circle cx="97" cy="6" r="3.6" fill="#dfe4e9"/>
+          <path d="M98.6,1.6 L100.8,-4.6" stroke="#3a3f47" stroke-width="3.4" stroke-linecap="round"/>
+          <path d="M97,6 L88.6,33.5 L86.6,38" fill="none" stroke="#e9edf1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M97,6 L88.6,33.5 L86.6,38" fill="none" stroke="#8d96a3" stroke-width=".45" stroke-linecap="round" transform="translate(.45 .1)"/>
+          <rect x="83.2" y="36.4" width="6.4" height="4.2" rx=".8" fill="#1d1d22" transform="rotate(24 86.4 38.5)"/>
+          <rect x="85.4" y="39.6" width="2" height="1.8" fill="#c9a14a" transform="rotate(24 86.4 38.5)"/>
+        </g></svg>
+      </div>
       <div class="cover"><canvas id="art"></canvas><canvas id="type" aria-hidden="true"></canvas>
         <button class="quick-save" id="quick-save" aria-label="커버 저장 (3000×3000 PNG)" title="커버 저장 (3000×3000 PNG)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 19h14"/></svg>
@@ -88,6 +121,15 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
   <div class="panel">
     <h1>City Pop Cover</h1>
     <p class="sub">절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작</p>
+
+    <fieldset id="music" hidden>
+      <legend>음악</legend>
+      <div class="player">
+        <button class="play" id="m-play" aria-pressed="false"></button>
+        <div class="track"><b id="m-title"></b><span id="m-time">LP 로 듣기</span></div>
+      </div>
+      <label class="check"><input type="checkbox" id="m-tex" checked> LP 질감 (지직거림 · 음 흔들림)</label>
+    </fieldset>
 
     <fieldset>
       <legend>장면</legend>
@@ -133,7 +175,7 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
 
 <script src="/nagai-scene.min.js?v=1.4.1"></script>
 <script>
-const CONFIG = {"mood": "dusk", "title": "Summer Breeze", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 21081};
+const CONFIG = {"mood": "dusk", "music": {"src": "달궈진_정수리.mp3", "title": "달궈진 정수리", "artist": "Nagai Style"}, "title": "Summer Breeze", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 9377};
 
 // 처음 장면: CONFIG.mood 가 있으면 그 분위기(day 오후 · dusk 해질녘 · evening 저녁)의 무작위 시드, 없으면 CONFIG.seed
 function startSeed() {
@@ -317,6 +359,162 @@ async function onSave() {
 }
 $('save').addEventListener('click', onSave);
 $('quick-save').addEventListener('click', onSave);
+
+// ── 음악: LP 를 트는 것처럼 (CONFIG.music = { src, title, artist })
+//   재생 → 판이 돌기 시작하고 톤암이 들어와 바늘을 내린다(툭) → 들어가는 홈의 지직거림 → 음악.
+//   LP 질감: 튀는 소리·표면 잡음, 음 흔들림(와우·플러터), 높은음·낮은음을 살짝 깎은 따뜻한 소리. 소리 파일 없이 Web Audio 로 만든다.
+//   저음(킥·베이스)이 세게 칠 때마다 커버와 판이 살짝 들썩인다.
+if (CONFIG.music && CONFIG.music.src) setupRecordPlayer(CONFIG.music);
+
+function setupRecordPlayer(M) {
+  const sleeve = $('sleeve'), disc = $('disc'), vinyl = $('vinyl'), cover = document.querySelector('.cover'), btn = $('m-play');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ICON = {
+    play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 4h4.5v16H6zM13.5 4H18v16h-4.5z"/></svg>',
+  };
+  document.body.classList.add('has-music');
+  $('music').hidden = false;
+  $('m-title').textContent = M.title || '';
+  if (M.title) $('lbl-text').textContent = `${M.title} · SIDE A · 33⅓ RPM`;
+
+  const audio = new Audio();
+  audio.preload = 'none';
+  audio.src = M.src;
+  let ac = null, G = null, mode = 'stopped', token = 0;           // mode: stopped | starting | playing | stopping
+
+  const fmt = (t) => (isFinite(t) ? `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}` : '-:--');
+  const showTime = () => { $('m-time').textContent = audio.currentTime || mode !== 'stopped' ? `${fmt(audio.currentTime)} / ${fmt(audio.duration)}` : 'LP 로 듣기'; };
+  audio.addEventListener('timeupdate', showTime);
+  audio.addEventListener('loadedmetadata', showTime);
+  const setButton = (on) => { btn.innerHTML = (on ? ICON.pause : ICON.play) + `<span>${on ? '멈춤' : '재생'}</span>`; btn.setAttribute('aria-pressed', String(on)); };
+  setButton(false);
+
+  // 튀는 소리 + 옅은 표면 잡음 (7초짜리를 반복)
+  function crackleBuffer() {
+    const sr = ac.sampleRate, len = sr * 7, buf = ac.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = buf.getChannelData(ch);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < len; i++) {                                // 분홍빛 잡음
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99765 * b0 + w * 0.099046; b1 = 0.963 * b1 + w * 0.2965164; b2 = 0.57 * b2 + w * 1.0526913;
+        d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.01;
+      }
+      for (let k = 0; k < 7 * 7; k++) {                             // 초당 약 7번 틱, 가끔 큰 팝
+        const at = Math.floor(Math.random() * len), big = Math.random() < 0.07;
+        const amp = (big ? 0.45 : 0.1) * (0.4 + Math.random() * 0.6), dec = sr * (big ? 0.0022 : 0.0007), sg = Math.random() < 0.5 ? -1 : 1;
+        for (let j = 0; j < dec * 6 && at + j < len; j++) d[at + j] += sg * amp * Math.exp(-j / dec) * (0.4 + Math.random() * 0.6);
+      }
+    }
+    return buf;
+  }
+  // 바늘이 내려앉는 소리: 낮은 '툭' + 짧은 지직
+  function dropBuffer(lift) {
+    const sr = ac.sampleRate, len = Math.floor(sr * 0.45), buf = ac.createBuffer(1, len, sr), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      const t = i / sr;
+      d[i] = (lift ? 0.18 : 0.55) * Math.sin(2 * Math.PI * (lift ? 90 : 52) * t) * Math.exp(-t / (lift ? 0.03 : 0.07))
+        + (Math.random() * 2 - 1) * (lift ? 0.12 : 0.22) * Math.exp(-t / 0.035);
+    }
+    return buf;
+  }
+  function initAudio() {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ac.createMediaElementSource(audio);
+    const analyser = ac.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = 0.45;
+    const wow = ac.createDelay(0.05); wow.delayTime.value = 0.012;                     // 지연 시간을 흔들어 음높이를 아주 살짝 일렁이게
+    const lfo = (hz, depth) => { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = hz; g.gain.value = depth; o.connect(g).connect(wow.delayTime); o.start(); return g; };
+    const wowDepth = lfo(0.55, 0.0011), flutterDepth = lfo(5.7, 0.00003);
+    const low = ac.createBiquadFilter(); low.type = 'lowpass'; low.frequency.value = 12500; low.Q.value = 0.4;   // 따뜻하게
+    const high = ac.createBiquadFilter(); high.type = 'highpass'; high.frequency.value = 32;
+    const music = ac.createGain(); music.gain.value = 0;
+    const noise = ac.createGain(); noise.gain.value = 0;
+    const nf = ac.createBiquadFilter(); nf.type = 'highpass'; nf.frequency.value = 280;
+    src.connect(analyser);
+    src.connect(wow).connect(low).connect(high).connect(music).connect(ac.destination);
+    const cr = ac.createBufferSource(); cr.buffer = crackleBuffer(); cr.loop = true; cr.connect(nf).connect(noise).connect(ac.destination); cr.start();
+    G = { analyser, music, noise, low, wowDepth, flutterDepth, bins: new Uint8Array(analyser.frequencyBinCount) };
+    applyTexture();
+  }
+  const NOISE_LEVEL = 0.55;
+  function applyTexture() {
+    if (!G) return;
+    const on = $('m-tex').checked, t = ac.currentTime;
+    G.wowDepth.gain.setTargetAtTime(on ? 0.0011 : 0, t, 0.1);
+    G.flutterDepth.gain.setTargetAtTime(on ? 0.00003 : 0, t, 0.1);
+    G.low.frequency.setTargetAtTime(on ? 12500 : 20000, t, 0.1);
+    if (mode === 'playing' || mode === 'starting') G.noise.gain.setTargetAtTime(on ? NOISE_LEVEL : 0, t, 0.15);
+  }
+  $('m-tex').addEventListener('change', applyTexture);
+  function oneShot(buf, gain) { const b = ac.createBufferSource(), g = ac.createGain(); b.buffer = buf; g.gain.value = gain; b.connect(g).connect(ac.destination); b.start(); }
+
+  async function play() {
+    const my = ++token;
+    if (!ac) initAudio();
+    if (ac.state === 'suspended') await ac.resume();
+    if (!$('record-on').checked) { $('record-on').checked = true; sleeve.classList.add('with-record'); }
+    mode = 'starting'; setButton(true); sleeve.classList.add('playing'); spin();
+    audio.load && audio.readyState === 0 && audio.load();                      // 톤암이 들어오는 동안 곡을 미리 받는다
+    await wait(1000); if (my !== token) return;                                  // 톤암이 판 위로
+    oneShot(dropBuffer(false), 0.9);                                             // 툭
+    if ($('m-tex').checked) G.noise.gain.setTargetAtTime(NOISE_LEVEL, ac.currentTime, 0.05);
+    await wait(900); if (my !== token) return;                                   // 들어가는 홈의 지직거림
+    G.music.gain.cancelScheduledValues(ac.currentTime);
+    G.music.gain.setTargetAtTime(1, ac.currentTime, 0.03);
+    try { await audio.play(); } catch (e) { if (my === token) stop(); return; }
+    if (my === token) mode = 'playing';
+  }
+  async function stop(ended) {
+    const my = ++token;
+    if (mode === 'stopped') return;
+    mode = 'stopping'; setButton(false);
+    if (G) {
+      G.music.gain.setTargetAtTime(0, ac.currentTime, 0.04);
+      G.noise.gain.setTargetAtTime(0, ac.currentTime, 0.08);
+      oneShot(dropBuffer(true), 0.7);                                            // 바늘 드는 소리
+    }
+    await wait(180);
+    if (my !== token) return;
+    audio.pause();
+    if (ended) audio.currentTime = 0;
+    sleeve.classList.remove('playing');                                          // 톤암이 돌아가고 판은 천천히 멈춘다
+    mode = 'stopped'; showTime();
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const toggle = () => (mode === 'starting' || mode === 'playing' ? stop() : play());
+  btn.addEventListener('click', toggle);
+  disc.addEventListener('click', toggle);
+  audio.addEventListener('ended', () => stop(true));
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: M.title || '', artist: M.artist || S.artist || '' });
+    navigator.mediaSession.setActionHandler('play', () => mode === 'stopped' && play());
+    navigator.mediaSession.setActionHandler('pause', () => stop());
+  }
+
+  // 판 돌리기(33⅓ RPM, 켤 때·끌 때 서서히) + 저음에 맞춰 들썩이기
+  let raf = 0, last = 0, angle = 0, speed = 0, bump = 0, avg = 0, lastBeat = 0;
+  const DEG = (100 / 3) * 6;
+  function spin() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  function frame(now) {
+    raf = 0;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const on = mode === 'starting' || mode === 'playing';
+    speed += ((on ? DEG : 0) - speed) * (1 - Math.exp(-dt / (on ? 0.35 : 0.7)));
+    angle = (angle + speed * dt) % 360;
+    vinyl.style.transform = `rotate(${angle.toFixed(2)}deg)`;
+    if (mode === 'playing' && G && !reduce) {
+      G.analyser.getByteFrequencyData(G.bins);
+      const e = (G.bins[1] + G.bins[2] + G.bins[3]) / 3;                          // 약 40~170Hz
+      avg = avg ? avg + (e - avg) * (1 - Math.exp(-dt / 0.6)) : e;
+      if (e > 170 && e - avg > 18 && now - lastBeat > 600) { lastBeat = now; bump = 1; }   // 센 박자에만 (초당 1번 남짓)
+    }
+    bump *= Math.exp(-dt / 0.11);
+    cover.style.scale = bump > 0.002 ? String(1 + bump * 0.012) : '';
+    disc.style.scale = bump > 0.002 ? String(1 + bump * 0.008) : '';
+    if (on || speed > 0.5 || bump > 0.002) raf = requestAnimationFrame(frame);
+  }
+}
 </script>
 </body>
 </html>

@@ -7,5 +7,10 @@
   "small": "STEREO",
   "font": "script",
   "pos": "tl",
-  "lib_src": "/nagai-scene.min.js"
+  "lib_src": "/nagai-scene.min.js",
+  "music": {
+    "src": "달궈진_정수리.mp3",
+    "title": "달궈진 정수리",
+    "artist": "Nagai Style"
+  }
 }
