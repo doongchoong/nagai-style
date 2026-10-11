@@ -86,7 +86,7 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
   </div>
   <div class="panel">
     <h1>City Pop Cover</h1>
-    <p class="sub">장면을 고르고 글자를 얹어 앨범 커버로 저장</p>
+    <p class="sub">절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작</p>
 
     <fieldset>
       <legend>장면</legend>
@@ -132,12 +132,23 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
 
 <script src="/nagai-scene.min.js?v=1.4.1"></script>
 <script>
-const CONFIG = {"title": "Summer Breeze", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 572};
+const CONFIG = {"mood": "dusk", "title": "Summer Breeze", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 36925};
+
+// 처음 장면: CONFIG.mood 가 있으면 그 분위기(day 오후 · dusk 해질녘 · evening 저녁)의 무작위 시드, 없으면 CONFIG.seed
+function startSeed() {
+  const want = { day: ['deep', 'bright'], dusk: ['dusk'], evening: ['violet'] }[CONFIG.mood];
+  if (!want) return CONFIG.seed;
+  for (let i = 0; i < 400; i++) {
+    const seed = 1 + Math.floor(Math.random() * 99999);
+    if (want.includes(NagaiScene.composeScene(seed, { force: CONFIG.force || {}, width: 1000, height: 1000 }).choice.sky)) return seed;
+  }
+  return CONFIG.seed;
+}
 
 // ── 장면: 정사각, 컨트롤은 패널 안에 (비율·사진 저장 버튼은 커버 페이지가 맡는다)
 const nagai = window.nagai = NagaiScene.mount({
   canvas: '#art', controls: '#scene-ctl', aspect: '1:1',
-  seed: CONFIG.seed, force: CONFIG.force || {}, wind: CONFIG.wind ?? 0.6,
+  seed: startSeed(), force: CONFIG.force || {}, wind: CONFIG.wind ?? 0.6,
   ui: { aspect: false, save: false, info: false },
   onChange: () => { if (window.nagai) { paintDisc(); drawPreview(); } },   // 첫 그림(장착 중)에는 아직 nagai 가 없다
 });
