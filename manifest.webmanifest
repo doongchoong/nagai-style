@@ -1,0 +1,28 @@
+{
+  "name": "Nagai Style",
+  "short_name": "Nagai Style",
+  "description": "나가이 히로시 풍 80년대 시티팝 모션그래픽",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f9c6d3",
+  "theme_color": "#e77fae",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
