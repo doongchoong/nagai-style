@@ -1,4 +1,4 @@
-/*! nagai-scene.js v1.4.1 — 나가이 히로시 스타일 모션그래픽 (Canvas 2D, 의존성 없음)
+/*! nagai-scene.js v1.5.0 — 나가이 히로시 스타일 모션그래픽 (Canvas 2D, 의존성 없음)
  *
  * 블로그·웹페이지에 넣기
  *   <canvas id="art"></canvas>
@@ -2773,6 +2773,17 @@ const CHOICE_LABELS = {
   deep: '짙은 하늘', bright: '맑은 하늘', dusk: '분홍 해질녘', violet: '연보라 저녁',
   sand: '모래색 바닥', coral: '산호빛 바닥', maroon: '자줏빛 바닥',
 };
+const CHOICE_LABELS_EN = {
+  beach: 'Beach', resort: 'Resort', poolside: 'Poolside yard', coastRoad: 'Coast road',
+  sea: 'Sea', 'sea+city': 'Sea + city', 'sea+island': 'Sea + island', hedge: 'Hedge',
+  left: 'Subject left', center: 'Subject center', right: 'Subject right',
+  car: 'Car', pool: 'Pool', wall: 'Wall', empty: 'Empty',
+  even: 'Palms evenly spaced', cluster: 'Palm cluster', pair: 'Pair of palms', behind: 'Palms behind buildings',
+  deep: 'Deep blue sky', bright: 'Clear sky', dusk: 'Pink dusk', violet: 'Violet evening',
+  sand: 'Sand ground', coral: 'Coral ground', maroon: 'Maroon ground',
+};
+const choiceLabel = (k, lang) => (lang === 'en' ? CHOICE_LABELS_EN : CHOICE_LABELS)[k] ?? k;
+const buildingsLabel = (n, lang) => (lang === 'en' ? `${n} building${n === 1 ? '' : 's'}` : `${n}채`);
 
 // 이웃한 시드(1, 2, 3 …)도 전혀 다른 난수열이 되도록 섞는다
 function hashSeed(n) {
@@ -2789,10 +2800,10 @@ function pickWeighted(rng, options) {
   return options[options.length - 1][0];
 }
 
-// UI 용: 테마별로 고를 수 있는 선택지 (값, 표시 이름)
-function choiceOptions(theme) {
+// UI 용: 테마별로 고를 수 있는 선택지 (값, 표시 이름). lang: 'ko' | 'en'
+function choiceOptions(theme, lang = 'ko') {
   const T = COMPOSITION_TREE.themes[theme] ?? {};
-  const label = (o) => [o[0], typeof o[0] === 'number' ? `${o[0]}채` : (CHOICE_LABELS[o[0]] ?? o[0])];
+  const label = (o) => [o[0], typeof o[0] === 'number' ? buildingsLabel(o[0], lang) : choiceLabel(o[0], lang)];
   return {
     theme: COMPOSITION_TREE.theme.map(label),
     far: (T.far ?? []).map(label),
@@ -2804,9 +2815,10 @@ function choiceOptions(theme) {
   };
 }
 
-function describeChoice(choice) {
+function describeChoice(choice, lang = 'ko') {
   return [choice.theme, choice.far, choice.focal, choice.foreground, choice.palms, choice.sky, choice.ground]
-    .map((k) => CHOICE_LABELS[k] ?? k).join(' · ') + (choice.buildings ? ` · 건물 ${choice.buildings}채` : '');
+    .map((k) => choiceLabel(k, lang)).join(' · ')
+    + (choice.buildings ? (lang === 'en' ? ` · ${buildingsLabel(choice.buildings, 'en')}` : ` · 건물 ${choice.buildings}채`) : '');
 }
 
 /* ═════════ 1) 구도 결정 + 배치 → 장면 명세 ═════════ */
@@ -3407,7 +3419,44 @@ function injectNagaiCss() {
   document.head.appendChild(s);
 }
 
-const PICK_KEYS = [['theme', '테마'], ['far', '원경'], ['focal', '주인공 위치'], ['foreground', '전경'], ['buildings', '건물'], ['palms', '야자수'], ['sky', '하늘']];
+const PICK_KEYS = ['theme', 'far', 'focal', 'foreground', 'buildings', 'palms', 'sky'];
+// 화면 문구 (컨트롤·저장 창). mount 의 lang: 'ko' (기본) | 'en' | 'auto'
+const NAGAI_TEXT = {
+  ko: {
+    randomGroup: '랜덤 장면', random: '랜덤', moods: ['아무거나', '맑은 오후', '해질녘', '저녁'],
+    prevSeed: '이전 시드', nextSeed: '다음 시드', seed: '시드 ', seedTitle: '시드 또는 장면 코드 입력 후 Enter', seedAria: '시드 또는 장면 코드',
+    newScene: '새 구도', copy: '복사', copyTitle: '이 장면을 다시 열 수 있는 링크(또는 장면 코드)를 복사', copied: '복사됨', selected: '선택됨',
+    shuffle: '위치만 바꾸기', wind: '바람 ', pause: '일시정지', play: '재생',
+    save: '사진 저장', saveTitle: '지금 장면을 고해상도 PNG 로 저장', saving: '저장 중…',
+    palmGroup: '야자수 그리기', palms: '야자수 ', palmModes: ['가볍게', '잎마다'],
+    palmTitles: ['잎을 미리 그려 두고 돌려 찍는다 (가벼움)', '잎줄기가 휘고 소엽이 떨린다 (무거움)'],
+    aspectGroup: '화면 비율', aspects: ['가로', '모바일', '정사각'],
+    pick: '상세 구도 고르기', pickHint: '자동은 시드대로, 고른 항목은 시드를 바꿔도 유지돼요', auto: '자동', allAuto: '모두 자동으로',
+    pickKeys: { theme: '테마', far: '원경', focal: '주인공 위치', foreground: '전경', buildings: '건물', palms: '야자수', sky: '하늘' },
+    langGroup: '언어', savedDialog: '저장한 사진', savedTip: '다운로드가 안 되면 사진을 길게 누르거나 우클릭해서 저장하세요', close: '닫기',
+  },
+  en: {
+    randomGroup: 'Random scene', random: 'Random', moods: ['Any', 'Afternoon', 'Dusk', 'Evening'],
+    prevSeed: 'Previous seed', nextSeed: 'Next seed', seed: 'Seed ', seedTitle: 'Type a seed or scene code, then press Enter', seedAria: 'Seed or scene code',
+    newScene: 'New scene', copy: 'Copy', copyTitle: 'Copy a link (or scene code) that reopens this scene', copied: 'Copied', selected: 'Selected',
+    shuffle: 'Shuffle layout', wind: 'Wind ', pause: 'Pause', play: 'Play',
+    save: 'Save photo', saveTitle: 'Save this moment as a high-resolution PNG', saving: 'Saving…',
+    palmGroup: 'Palm drawing', palms: 'Palms ', palmModes: ['Light', 'Per leaf'],
+    palmTitles: ['Fronds drawn once and stamped (lighter)', 'Fronds bend and leaflets flutter (heavier)'],
+    aspectGroup: 'Aspect ratio', aspects: ['Landscape', 'Mobile', 'Square'],
+    pick: 'Choose composition', pickHint: 'Auto follows the seed; what you pick stays when you change the seed', auto: 'Auto', allAuto: 'All auto',
+    pickKeys: { theme: 'Theme', far: 'Distance', focal: 'Subject', foreground: 'Foreground', buildings: 'Buildings', palms: 'Palms', sky: 'Sky' },
+    langGroup: 'Language', savedDialog: 'Saved photo', savedTip: "If the download doesn't start, long-press or right-click the photo to save it", close: 'Close',
+  },
+};
+// 'auto' → 주소의 ?lang= → 마지막으로 고른 언어 → 브라우저 언어 (한국어가 아니면 영어)
+function resolveLang(v) {
+  if (v === 'ko' || v === 'en') return v;
+  if (v !== 'auto') return 'ko';
+  try { const q = new URLSearchParams(location.search).get('lang'); if (q === 'ko' || q === 'en') return q; } catch (e) { /* 주소를 못 읽는 곳 */ }
+  try { const st = localStorage.getItem('nagai-lang'); if (st === 'ko' || st === 'en') return st; } catch (e) { /* 저장소가 막힌 곳 */ }
+  return typeof navigator !== 'undefined' && /^ko\b/i.test(navigator.language || '') ? 'ko' : 'en';
+}
 // 화면 비율: 세로는 설계 좌표 자체를 세로로 바꿔 구도를 새로 짠다
 const ASPECTS = { '3:2': [1200, 800], '9:16': [720, 1280], '1:1': [1000, 1000] };
 const EXPORT_SIZES = { '3:2': [2400, 1600], '9:16': [1440, 2560], '1:1': [3000, 3000] };   // 1:1 = 앨범 커버 (스트리밍 규격)
@@ -3415,7 +3464,7 @@ const EXPORT_SIZES = { '3:2': [2400, 1600], '9:16': [1440, 2560], '1:1': [3000, 
 // 파일 저장: 저장 기능을 주는 곳(claude.ai 아티팩트의 downloads)이면 그걸로 (보는 사람이 확인 후 저장),
 // 아니면 일반 다운로드. 다른 페이지 안(iframe)이면 다운로드가 막힐 수 있어 사진을 화면에 띄운다.
 // 돌려주는 값: 'saved' | 'declined' | 'busy' | 'downloaded'
-async function saveFile(blob, filename) {
+async function saveFile(blob, filename, lang = 'ko') {
   const dl = typeof window !== 'undefined' && window.claude && typeof window.claude.use === 'function'
     ? await window.claude.use('downloads').catch(() => null) : null;
   if (dl) {
@@ -3432,24 +3481,25 @@ async function saveFile(blob, filename) {
   document.body.appendChild(a); a.click(); a.remove();
   let framed = true;
   try { framed = window.top !== window; } catch (e) { /* 다른 출처의 iframe */ }
-  if (framed && /^image\//.test(blob.type)) showSaved(url, filename);
+  if (framed && /^image\//.test(blob.type)) showSaved(url, filename, lang);
   else setTimeout(() => URL.revokeObjectURL(url), 30000);
   return 'downloaded';
 }
 
 // 저장한 사진을 화면 위에 띄운다 (다운로드가 막힌 곳에서 길게 누르기·우클릭으로 저장)
-function showSaved(url, name) {
+function showSaved(url, name, lang = 'ko') {
+  const L = NAGAI_TEXT[lang] || NAGAI_TEXT.ko;
   const wrap = document.createElement('div');
-  wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-label', '저장한 사진');
+  wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-label', L.savedDialog);
   wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(8,10,24,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;box-sizing:border-box;font:14px system-ui,sans-serif;color:#fff';
   const img = new Image();
   img.src = url; img.alt = name;
   img.style.cssText = 'max-width:100%;max-height:calc(100% - 90px);object-fit:contain;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.5)';
   const tip = document.createElement('div');
-  tip.textContent = '다운로드가 안 되면 사진을 길게 누르거나 우클릭해서 저장하세요';
+  tip.textContent = L.savedTip;
   tip.style.cssText = 'text-align:center;opacity:.85';
   const close = document.createElement('button');
-  close.textContent = '닫기';
+  close.textContent = L.close;
   close.style.cssText = 'font:inherit;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 16px;cursor:pointer';
   const done = () => { wrap.remove(); URL.revokeObjectURL(url); document.removeEventListener('keydown', onKey); };
   const onKey = (e) => { if (e.key === 'Escape') done(); };
@@ -3492,8 +3542,13 @@ function mount(options = {}) {
     palmDetail: false,                        // 야자수: false 가볍게(잎 도장, 기본) | true 잎마다(휘고 떨림, 무거움)
     fps: 30,                                  // 초당 그리는 횟수 (나가이 장면은 움직임이 느려 30 이면 충분, 발열·배터리 절약)
     exportSize: null,                         // 사진 저장 크기 { '3:2': [w, h], '9:16': [w, h] } (기본 2400×1600, 1440×2560)
+    lang: 'ko',                               // 컨트롤 문구: 'ko' | 'en' | 'auto' (주소 ?lang= → 마지막 선택 → 브라우저 언어)
     ...options,
   };
+  let lang = resolveLang(o.lang);
+  const pageLang = o.lang === 'auto';        // auto 면 페이지 전체 언어로 보고 <html lang> 도 맞춘다
+  const T = () => NAGAI_TEXT[lang];
+  if (pageLang) try { document.documentElement.lang = lang; } catch (e) { /* 문서 없음 */ }
   let urlTouched = false, composedOnce = false;                     // 주소에 장면이 있었거나 사용자가 장면을 바꾼 뒤에만 주소를 고친다
   if (o.urlState) {                           // 주소에 장면 코드가 있으면 그 장면으로 시작
     try {
@@ -3504,10 +3559,10 @@ function mount(options = {}) {
   if (o.aspect && ASPECTS[o.aspect]) [o.designWidth, o.designHeight] = ASPECTS[o.aspect];
   const pickEl = (v) => (typeof v === 'string' ? document.querySelector(v) : v);
   const canvas = pickEl(o.canvas);
-  if (!canvas || !canvas.getContext) throw new Error('NagaiScene.mount: canvas 요소가 필요해요');
+  if (!canvas || !canvas.getContext) throw new Error('NagaiScene.mount: a canvas element is required (canvas 요소가 필요해요)');
   const ctx = canvas.getContext('2d');
   const controlsEl = pickEl(o.controls);
-  const ui = { info: true, random: true, seed: true, jitter: true, wind: true, pause: true, pick: true, aspect: true, save: true, palm: true, ...o.ui };
+  const ui = { info: true, random: true, seed: true, jitter: true, wind: true, pause: true, pick: true, aspect: true, save: true, palm: true, lang: false, ...o.ui };
   const reduceMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const state = { seed: o.seed, jitter: o.jitter, force: { ...o.force }, wind: o.wind, playing: o.autoplay && !reduceMotion, palmDetail: !!o.palmDetail };
   const grain = o.grain ? createGrain() : null;
@@ -3624,46 +3679,46 @@ function mount(options = {}) {
     const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
     if (ui.info) { el.info = mk('div', 'nagai-ctl-info'); el.info.setAttribute('aria-live', 'polite'); controlsEl.appendChild(el.info); }
     if (ui.random) {
-      const g = mk('div', 'nagai-ctl-random'); g.setAttribute('role', 'group'); g.setAttribute('aria-label', '랜덤 장면');
-      g.appendChild(mk('span', 'nagai-ctl-random-lbl', '랜덤'));
-      for (const [mood, name] of [[null, '아무거나'], ['day', '맑은 오후'], ['dusk', '해질녘'], ['evening', '저녁']]) {
-        const b = mk('button', null, name);
+      const g = mk('div', 'nagai-ctl-random'); g.setAttribute('role', 'group'); g.setAttribute('aria-label', T().randomGroup);
+      g.appendChild(mk('span', 'nagai-ctl-random-lbl', T().random));
+      [null, 'day', 'dusk', 'evening'].forEach((mood, i) => {
+        const b = mk('button', null, T().moods[i]);
         b.onclick = () => (mood ? api.randomMood(mood) : api.randomize());
         g.appendChild(b);
-      }
+      });
       controlsEl.appendChild(g);
     }
     const row = mk('div', 'nagai-ctl-row');
     if (ui.seed) {
-      const prev = mk('button', null, '◀'); prev.setAttribute('aria-label', '이전 시드'); prev.onclick = () => api.prev();
+      const prev = mk('button', null, '◀'); prev.setAttribute('aria-label', T().prevSeed); prev.onclick = () => api.prev();
       // 장면 코드 입력칸: 숫자만 넣어도 되고, 복사한 코드를 통째로 붙여넣어도 된다
       el.seed = document.createElement('input');
-      Object.assign(el.seed, { type: 'text', inputMode: 'text', spellcheck: false, autocomplete: 'off', title: '시드 또는 장면 코드 입력 후 Enter' });
-      el.seed.setAttribute('aria-label', '시드 또는 장면 코드');
+      Object.assign(el.seed, { type: 'text', inputMode: 'text', spellcheck: false, autocomplete: 'off', title: T().seedTitle });
+      el.seed.setAttribute('aria-label', T().seedAria);
       const applyCode = () => { if (!api.setCode(el.seed.value)) renderUI(); };
       el.seed.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); el.seed.blur(); applyCode(); } };
       el.seed.onchange = applyCode;
-      const seedWrap = mk('label', 'nagai-ctl-seed', '시드 '); seedWrap.appendChild(el.seed);
-      const next = mk('button', null, '▶'); next.setAttribute('aria-label', '다음 시드'); next.onclick = () => api.next();
-      const rnd = ui.random ? null : mk('button', null, '새 구도');           // 랜덤 그룹이 있으면 거기로
+      const seedWrap = mk('label', 'nagai-ctl-seed', T().seed); seedWrap.appendChild(el.seed);
+      const next = mk('button', null, '▶'); next.setAttribute('aria-label', T().nextSeed); next.onclick = () => api.next();
+      const rnd = ui.random ? null : mk('button', null, T().newScene);         // 랜덤 그룹이 있으면 거기로
       if (rnd) rnd.onclick = () => api.randomize();
-      const copy = mk('button', null, '복사');
-      copy.title = '이 장면을 다시 열 수 있는 링크(또는 장면 코드)를 복사';
+      const copy = mk('button', null, T().copy);
+      copy.title = T().copyTitle;
       copy.onclick = async () => {
         const text = api.shareText();
         let ok = false;
         try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { /* 클립보드가 막힌 곳 */ }
         if (!ok) { el.seed.value = api.code; el.seed.select(); }        // 직접 복사할 수 있게 선택해 둔다
-        copy.textContent = ok ? '복사됨' : '선택됨';
-        setTimeout(() => { copy.textContent = '복사'; }, 1400);
+        copy.textContent = ok ? T().copied : T().selected;
+        setTimeout(() => { copy.textContent = T().copy; }, 1400);
       };
       row.append(...[prev, seedWrap, next, rnd, copy].filter(Boolean));
     }
-    if (ui.jitter) { const b = mk('button', null, '위치만 바꾸기'); b.onclick = () => api.shuffleLayout(); row.appendChild(b); }
+    if (ui.jitter) { const b = mk('button', null, T().shuffle); b.onclick = () => api.shuffleLayout(); row.appendChild(b); }
     controlsEl.appendChild(row);
     const row2 = mk('div', 'nagai-ctl-row');
     if (ui.wind) {
-      const lab = mk('label', null, '바람 ');
+      const lab = mk('label', null, T().wind);
       const r = document.createElement('input');
       Object.assign(r, { type: 'range', min: 0, max: 1.5, step: 0.05, value: state.wind });
       r.oninput = () => api.setWind(+r.value);
@@ -3671,18 +3726,18 @@ function mount(options = {}) {
     }
     if (ui.pause) { el.pause = mk('button'); el.pause.onclick = () => api.toggle(); row2.appendChild(el.pause); }
     if (ui.save) {
-      const b = mk('button', null, '사진 저장');
-      b.title = '지금 장면을 고해상도 PNG 로 저장';
-      b.onclick = async () => { b.disabled = true; b.textContent = '저장 중…'; try { await api.savePNG(); } finally { b.disabled = false; b.textContent = '사진 저장'; } };
+      const b = mk('button', null, T().save);
+      b.title = T().saveTitle;
+      b.onclick = async () => { b.disabled = true; b.textContent = T().saving; try { await api.savePNG(); } finally { b.disabled = false; b.textContent = T().save; } };
       row2.appendChild(b);
     }
     if (ui.palm) {
-      const seg = mk('span', 'nagai-ctl-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', '야자수 그리기');
-      const lab = mk('span', 'nagai-ctl-seed', '야자수 ');
+      const seg = mk('span', 'nagai-ctl-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', T().palmGroup);
+      const lab = mk('span', 'nagai-ctl-seed', T().palms);
       el.palm = {};
-      for (const [v, name] of [[false, '가볍게'], [true, '잎마다']]) {
-        const b = mk('button', null, name);
-        b.title = v ? '잎줄기가 휘고 소엽이 떨린다 (무거움)' : '잎을 미리 그려 두고 돌려 찍는다 (가벼움)';
+      for (const v of [false, true]) {
+        const b = mk('button', null, T().palmModes[+v]);
+        b.title = T().palmTitles[+v];
         b.onclick = () => api.setPalmDetail(v);
         el.palm[v] = b; seg.appendChild(b);
       }
@@ -3690,51 +3745,61 @@ function mount(options = {}) {
       row2.appendChild(wrap);
     }
     if (ui.aspect) {
-      const seg = mk('span', 'nagai-ctl-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', '화면 비율');
+      const seg = mk('span', 'nagai-ctl-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', T().aspectGroup);
       el.aspect = {};
-      for (const [a, name] of [['3:2', '가로'], ['9:16', '모바일'], ['1:1', '정사각']]) {
-        const b = mk('button', null, name); b.onclick = () => api.setAspect(a);
+      ['3:2', '9:16', '1:1'].forEach((a, i) => {
+        const b = mk('button', null, T().aspects[i]); b.onclick = () => api.setAspect(a);
         el.aspect[a] = b; seg.appendChild(b);
+      });
+      row2.appendChild(seg);
+    }
+    if (ui.lang) {                              // 언어 전환 (한 | EN)
+      const seg = mk('span', 'nagai-ctl-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', T().langGroup);
+      el.lang = {};
+      for (const [v, name] of [['ko', '한'], ['en', 'EN']]) {
+        const b = mk('button', null, name); b.lang = v; b.onclick = () => api.setLang(v);
+        el.lang[v] = b; seg.appendChild(b);
       }
       row2.appendChild(seg);
     }
     if (row2.childNodes.length) controlsEl.appendChild(row2);
     if (ui.pick) {
       const det = mk('details');
-      det.appendChild(mk('summary', null, '상세 구도 고르기'));
-      det.appendChild(mk('p', 'nagai-ctl-hint', '자동은 시드대로, 고른 항목은 시드를 바꿔도 유지돼요'));
+      det.appendChild(mk('summary', null, T().pick));
+      det.appendChild(mk('p', 'nagai-ctl-hint', T().pickHint));
       const grid = mk('div', 'nagai-ctl-grid');
       el.selects = {};
-      for (const [key, name] of PICK_KEYS) {
-        const lab = mk('label', null, name);
+      for (const key of PICK_KEYS) {
+        const lab = mk('label', null, T().pickKeys[key]);
         const sel = document.createElement('select');
         sel.onchange = () => api.setForce({ [key]: sel.value === '' ? null : sel.value });
         lab.appendChild(sel); grid.appendChild(lab);
         el.selects[key] = sel;
       }
       det.appendChild(grid);
-      const reset = mk('button', null, '모두 자동으로'); reset.onclick = () => api.clearForce();
+      const reset = mk('button', null, T().allAuto); reset.onclick = () => api.clearForce();
       det.appendChild(reset);
       controlsEl.appendChild(det);
     }
   }
   function renderUI() {
     if (!controlsEl || !scene) return;
-    if (el.info) el.info.textContent = describeChoice(scene.spec.choice);
+    if (el.info) el.info.textContent = describeChoice(scene.spec.choice, lang);
     if (el.seed && document.activeElement !== el.seed) { el.seed.value = api.code; el.seed.size = Math.max(6, Math.min(36, el.seed.value.length + 1)); }
-    if (el.pause) el.pause.textContent = state.playing ? '일시정지' : '재생';
+    if (el.pause) el.pause.textContent = state.playing ? T().pause : T().play;
+    if (el.lang) for (const [v, b] of Object.entries(el.lang)) b.setAttribute('aria-pressed', String(v === lang));
     if (el.aspect) for (const [a, b] of Object.entries(el.aspect)) b.setAttribute('aria-pressed', String(a === aspectName()));
     if (el.palm) for (const [v, b] of Object.entries(el.palm)) b.setAttribute('aria-pressed', String((v === 'true') === state.palmDetail));
     if (el.selects) {
-      const opts = choiceOptions(scene.spec.choice.theme);
-      for (const [key] of PICK_KEYS) {
+      const opts = choiceOptions(scene.spec.choice.theme, lang);
+      for (const key of PICK_KEYS) {
         const sel = el.selects[key], list = opts[key];
         if (state.force[key] != null && !list.some(([v]) => String(v) === String(state.force[key]))) delete state.force[key];
         const cur = scene.spec.choice[key];
         sel.innerHTML = '';
         const auto = document.createElement('option');
         auto.value = '';
-        auto.textContent = `자동 (${(list.find(([v]) => String(v) === String(cur)) || [, '—'])[1]})`;
+        auto.textContent = `${T().auto} (${(list.find(([v]) => String(v) === String(cur)) || [, '—'])[1]})`;
         sel.appendChild(auto);
         for (const [v, name] of list) { const op = document.createElement('option'); op.value = String(v); op.textContent = name; sel.appendChild(op); }
         sel.value = state.force[key] != null ? String(state.force[key]) : '';
@@ -3746,7 +3811,22 @@ function mount(options = {}) {
 
   // ── 바깥에서 쓰는 조작 함수
   const api = {
-    get state() { return { seed: state.seed, jitter: state.jitter, force: { ...state.force }, wind: state.wind, playing: state.playing, aspect: aspectName(), palmDetail: state.palmDetail, choice: scene && { ...scene.spec.choice } }; },
+    get state() { return { seed: state.seed, jitter: state.jitter, force: { ...state.force }, wind: state.wind, playing: state.playing, aspect: aspectName(), palmDetail: state.palmDetail, lang, choice: scene && { ...scene.spec.choice } }; },
+    get lang() { return lang; },
+    // 컨트롤 문구 언어 바꾸기 ('ko' | 'en'). 고른 언어는 기억해 두었다가 lang: 'auto' 인 페이지가 다음에 쓴다
+    setLang(v) {
+      if (v !== 'ko' && v !== 'en') return api;
+      lang = v;
+      try { localStorage.setItem('nagai-lang', v); } catch (e) { /* 저장소가 막힌 곳 */ }
+      if (pageLang) try {
+        document.documentElement.lang = v;
+        const u = new URL(location.href);                                       // 주소에 ?lang= 이 있으면 같이 바꿔서 새로고침해도 유지
+        if (u.searchParams.has('lang')) { u.searchParams.set('lang', v); history.replaceState(history.state, '', u); }
+      } catch (e) { /* 문서·주소 없음 */ }
+      buildUI(); renderUI();
+      if (o.onChange) o.onChange(api.state);
+      return api;
+    },
     get spec() { return scene && scene.spec; },
     get code() { return sceneCode({ seed: state.seed, jitter: state.jitter, aspect: aspectName(), force: state.force }); },
     // 장면 코드로 이동. 잘못된 코드면 false
@@ -3765,7 +3845,7 @@ function mount(options = {}) {
     async savePNG() {
       const size = (o.exportSize && o.exportSize[aspectName()]) || EXPORT_SIZES[aspectName()];
       const blob = await new Promise((res) => renderTo(size[0], size[1]).toBlob(res, 'image/png'));
-      const status = await saveFile(blob, api.fileName);
+      const status = await saveFile(blob, api.fileName, lang);
       return { width: size[0], height: size[1], fileName: api.fileName, status };
     },
     // 공유할 글: 단독 페이지면 장면이 담긴 주소, 다른 페이지 안(iframe)이면 장면 코드
@@ -3860,6 +3940,7 @@ function mountAll(root = document) {
       aspect: d.aspect || null,
       urlState: d.urlState !== undefined && d.urlState !== 'false',
       palmDetail: d.palmDetail !== undefined && d.palmDetail !== 'false',
+      lang: d.lang || 'ko',
     });
     out.push(cv.__nagai);
   });
@@ -3869,7 +3950,7 @@ function mountAll(root = document) {
 function registerKind(name, def) { SCENE_KINDS[name] = def; }
 
 const NagaiScene = {
-  version: '1.4.1',
+  version: '1.5.0',
   mount, mountAll, registerKind, saveFile, sceneCode, parseSceneCode,
   composeScene, buildScene, drawRun, choiceOptions, describeChoice,
   tree: COMPOSITION_TREE, kinds: SCENE_KINDS,

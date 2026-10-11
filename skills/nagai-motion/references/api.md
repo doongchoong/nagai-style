@@ -59,6 +59,7 @@ NagaiScene.mount({
   autoplay: true, grain: true, maxPixelRatio: 2,
   ui: { info, random, seed, jitter, wind, pause, pick, aspect, save, palm },   // 컨트롤 일부만 켜기 (기본 모두 true). random = 맨 위 랜덤 묶음 [아무거나·맑은 오후·해질녘·저녁], aspect = 가로/모바일/정사각, save = 사진 저장, palm = 야자수 가볍게/잎마다
   aspect: '3:2',             // '3:2' 가로 | '9:16' 세로 | '1:1' 정사각(앨범 커버) — 비율마다 구도를 새로 짠다
+  lang: 'ko',                // 컨트롤 문구: 'ko' | 'en' | 'auto' (주소 ?lang= → 마지막 선택 → 브라우저 언어). ui.lang: true 면 한/EN 전환 버튼
   palmDetail: false,         // 야자수: false 가볍게(잎을 미리 그려 두고 돌려 찍기, 약 6배 가벼움) | true 잎마다(잎줄기가 휘고 소엽이 떨림)
   fps: 30,                   // 초당 그리는 횟수. 움직임이 느려 30 이면 충분 (발열·배터리 절약). 속도는 실제 시간 기준이라 그대로
   exportSize: null,          // 사진 저장 크기 { '3:2': [2400, 1600], '9:16': [1440, 2560] } (기본값)
@@ -70,14 +71,14 @@ NagaiScene.mount({
 
 ## 4. 조작 함수 (mount 가 돌려주는 객체)
 
-`randomMood('day' | 'dusk' | 'evening')` (그 하늘이 원래 나오는 시드로 — 하늘을 고정하지 않아 장면 코드가 짧다), `savePNG()` (지금 순간을 고해상도 PNG 로, 파일 이름 = `fileName`), `render(W, H)` (지금 순간을 W×H 캔버스로 — 글자 합성 등에),  `code` (장면 코드), `setCode('83608-12 9:16 sky:violet')`, `shareText()`, `setPalmDetail(true | false)`, `setAspect('3:2' | '9:16' | '1:1')`, `setSeed(n)`, `next()`, `prev()`, `randomize()`, `shuffleLayout(j?)`, `setForce({ key: value | null })`, `clearForce()`, `setWind(v)`, `play()`, `pause()`, `toggle()`, `toPNG()` (data URL), `destroy()`, `state`, `spec`
+`randomMood('day' | 'dusk' | 'evening')` (그 하늘이 원래 나오는 시드로 — 하늘을 고정하지 않아 장면 코드가 짧다), `savePNG()` (지금 순간을 고해상도 PNG 로, 파일 이름 = `fileName`), `render(W, H)` (지금 순간을 W×H 캔버스로 — 글자 합성 등에),  `code` (장면 코드), `setCode('83608-12 9:16 sky:violet')`, `shareText()`, `setPalmDetail(true | false)`, `setLang('ko' | 'en')` · `lang`, `setAspect('3:2' | '9:16' | '1:1')`, `setSeed(n)`, `next()`, `prev()`, `randomize()`, `shuffleLayout(j?)`, `setForce({ key: value | null })`, `clearForce()`, `setWind(v)`, `play()`, `pause()`, `toggle()`, `toPNG()` (data URL), `destroy()`, `state`, `spec`
 
 ## 5. HTML 속성만으로 넣기
 
 ```html
 <canvas data-nagai data-seed="7" data-force='{"theme":"coastRoad"}' data-controls></canvas>
 ```
-`data-controls` 를 쓰면 캔버스 바로 아래에 컨트롤이 생긴다. `data-controls="#id"` 로 위치 지정 가능. 그 밖에 `data-aspect="9:16"`, `data-url-state`, `data-wind`, `data-jitter`, `data-autoplay="false"`, `data-grain="false"`.
+`data-controls` 를 쓰면 캔버스 바로 아래에 컨트롤이 생긴다. `data-controls="#id"` 로 위치 지정 가능. 그 밖에 `data-aspect="9:16"`, `data-url-state`, `data-wind`, `data-jitter`, `data-autoplay="false"`, `data-grain="false"`, `data-lang="en"`.
 
 ## 6. 장면 코드
 
@@ -96,6 +97,7 @@ claude.ai 아티팩트로 게시할 때는 `capabilities: {downloads: true}` 를
 
 80년대 시티팝 LP 재킷처럼 정사각 장면 위에 제목·아티스트·작은 글씨를 얹고, 일본 LP 띠지(오비)를 두를 수 있는 페이지. 레코드 슬리브 목업으로 미리 보고 3000×3000 PNG (스트리밍 커버 규격) 로 저장한다.
 config: `{"layout": "cover", "seed": 3, "force": {"sky": "dusk"}, "title": "Summer Breeze", "artist": "Nagai Style", "small": "STEREO", "font": "script|modern|serif|none", "pos": "tl|tc|tr|bl|bc|br", "color": "#fbf7ef", "obi": true, "obiColor": "#d8343f"}`
+`"lang": "ko|en|auto"` 로 화면 문구 언어를 정한다 (제목 옆 한/EN 버튼이 장면 컨트롤까지 같이 바꾼다). 해외 사용자가 볼 페이지면 `auto`.
 `"mood": "day|dusk|evening"` 을 주면 열 때마다 그 분위기(오후·해질녘·저녁)의 무작위 시드로 시작한다 (seed 대신, 하늘을 고정하지 않으므로 컨트롤로 다른 분위기도 고를 수 있음).
 `"music": {"src": "song.mp3", "title": "곡 제목", "artist": "아티스트"}` 를 주면 커버 가운데에 옅은 반투명 재생 버튼이 생긴다: 누르면 판이 33⅓ RPM 으로 돌기 시작하고 톤암이 들어와 바늘을 내린 뒤 음악이 나온다 (패널에 따로 컨트롤 없음, 효과음 없음). 음악은 브라우저가 직접 재생한다 (아이폰 Safari 에서 Web Audio 로 돌리면 멈추는 문제 때문). src 는 커버 페이지 기준 경로(같은 사이트에 올린 파일). 곡은 사용자가 쓸 권리가 있는 것만.
 글꼴은 Google Fonts (Yellowtail · Jost · Playfair Display). 띠지 제목은 한글·일본어면 글자를 세로로 쌓고, 영문이면 돌려 쓴다. 띠지의 품번(NGS-시드)과 가격은 장식이다.

@@ -56,9 +56,10 @@ python3 skills/nagai-motion/scripts/build_page.py config.json out.html
 | `aspect` | `3:2` 가로 · `9:16` 세로 · `1:1` 정사각 · `auto` (세로로 긴 화면이면 9:16) | `3:2` |
 | `layout` | `fullscreen` · `embed` (글 안에) · `cover` (앨범 커버 생성기) | `fullscreen` |
 | `controls` | 컨트롤 패널 표시 | `true` |
-| `ui` | 컨트롤 일부만: `{ "info", "random", "seed", "jitter", "wind", "pause", "pick", "aspect", "save", "palm" }` | 모두 켬 |
+| `ui` | 컨트롤 일부만: `{ "info", "random", "seed", "jitter", "wind", "pause", "pick", "aspect", "save", "palm", "lang" }` | `lang` 만 빼고 모두 켬 |
 | `url_state` | 주소(`#nagai=…`)에 장면 담기 | `fullscreen` 이면 켬 |
 | `palm_detail` | 야자수를 잎마다 정밀하게 (무거움). 기본은 가볍게(잎 도장) | `false` |
+| `lang` | 컨트롤 언어: `ko` · `en` · `auto` (주소의 `?lang=` → 마지막으로 고른 언어 → 브라우저 언어). 한 / EN 전환 버튼은 `"ui": {"lang": true}` | `ko` |
 | `lib_src` | 라이브러리를 품지 않고 링크로, 예: `"/nagai-scene.min.js"` (`?v=버전` 이 붙음) | 품기 |
 | `description` | `<meta name="description">` | — |
 | `head_html` | `<head>` 에 넣을 태그 (홈 화면 아이콘, manifest, theme-color …) | — |
@@ -89,9 +90,10 @@ const scene = NagaiScene.mount({
   autoplay: true, grain: true, maxPixelRatio: 2,
   fps: 30,                   // 초당 그리는 횟수. 움직임 속도는 시간 기준이라 그대로
   palmDetail: false,
+  lang: 'ko',                // 'ko' | 'en' | 'auto' — 컨트롤 문구 언어
   urlState: false,           // #nagai=<장면 코드> 읽고 쓰기
   exportSize: null,          // { '3:2': [2400, 1600], '9:16': [1440, 2560], '1:1': [3000, 3000] }
-  ui: {},                    // 컨트롤 끄기, 예: { save: false }
+  ui: {},                    // 컨트롤 끄기, 예: { save: false }. { lang: true } 면 한 / EN 전환 버튼
   extend: (spec, helpers) => spec,
   onChange: (state) => {},
 });
@@ -112,6 +114,7 @@ const scene = NagaiScene.mount({
 | `setAspect('3:2' \| '9:16' \| '1:1')` | 비율 바꾸기 |
 | `setWind(v)`, `play()`, `pause()`, `toggle()` | 움직임 |
 | `setPalmDetail(bool)` | 야자수 가볍게 / 잎마다 |
+| `lang`, `setLang('ko' \| 'en')` | 컨트롤 언어 읽기·바꾸기 (`lang: 'auto'` 페이지가 다음에 기억해서 씀) |
 | `code`, `setCode('83608-12 9:16 sky:violet')` | 장면 코드 읽기·열기 |
 | `shareText()` | 장면이 담긴 링크 (iframe 안에서는 장면 코드) |
 | `savePNG()` | 지금 순간을 고해상도 PNG 로 내려받기 |
@@ -125,7 +128,7 @@ const scene = NagaiScene.mount({
 <canvas data-nagai data-seed="7" data-aspect="9:16" data-force='{"theme":"coastRoad"}' data-controls></canvas>
 ```
 
-그 밖에 `data-controls="#id"`, `data-url-state`, `data-wind`, `data-jitter`, `data-autoplay="false"`, `data-grain="false"`.
+그 밖에 `data-controls="#id"`, `data-url-state`, `data-wind`, `data-jitter`, `data-autoplay="false"`, `data-grain="false"`, `data-lang="en"`.
 
 ### 장면 코드
 
@@ -193,6 +196,7 @@ function extendScene(spec) {                       // mount({ extend: extendScen
 | 키 | 값 |
 |---|---|
 | `seed` / `mood` | 고정 시드, 또는 `day` · `dusk` · `evening` 으로 열 때마다 그 분위기의 무작위 장면 |
+| `lang` | `ko` · `en` · `auto`. 제목 옆 한 / EN 버튼이 장면 컨트롤까지 같이 바꿉니다 |
 | `font` | `script` (Yellowtail) · `modern` (Jost) · `serif` (Playfair Display) · `none` |
 | `pos` | `tl`, `tc`, `tr`, `bl`, `bc`, `br` |
 | `obi` | 일본 LP 띠지 두르기. 한글·일본어 제목은 세로로 쌓고 영문은 돌려 씁니다 |

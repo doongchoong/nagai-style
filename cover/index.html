@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>City Pop Cover — Nagai Scene</title>
-<meta name="description" content="절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작">
+<meta name="description" content="Procedurally generated city-pop vinyl covers in the style of Hiroshi Nagai · 절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;500;600&family=Playfair+Display:ital,wght@1,600&family=Yellowtail&display=swap">
@@ -63,6 +63,8 @@ body{background:var(--bg);color:var(--ink);font-family:"Jost","Pretendard","Appl
 .cover-play:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .panel{background:var(--panel);border-left:1px solid var(--line);padding:20px 18px 28px;display:flex;flex-direction:column;gap:16px;overflow:auto}
 h1{font-size:18px;font-weight:600;margin:0;letter-spacing:.02em}
+.head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.seg.lang button{font-size:12px;padding:3px 9px}
 .sub{color:var(--muted);font-size:13px;margin:-10px 0 0}
 fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 legend,.lbl{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;padding:0}
@@ -131,54 +133,85 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
     </div>
   </div>
   <div class="panel">
-    <h1>City Pop Cover</h1>
-    <p class="sub">절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작</p>
+    <div class="head">
+      <h1>City Pop Cover</h1>
+      <div class="seg lang" id="lang" role="group" aria-label="언어" data-i18n-attr="aria-label:lang"><button data-v="ko" lang="ko">한</button><button data-v="en" lang="en">EN</button></div>
+    </div>
+    <p class="sub" data-i18n="sub">절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작</p>
 
     <fieldset>
-      <legend>장면</legend>
+      <legend data-i18n="scene">장면</legend>
       <div id="scene-ctl"></div>
     </fieldset>
 
     <fieldset>
-      <legend>글자</legend>
-      <input type="text" id="t-title" placeholder="앨범 제목" aria-label="앨범 제목">
-      <input type="text" id="t-artist" placeholder="아티스트" aria-label="아티스트">
-      <input type="text" id="t-small" placeholder="작은 글씨 (예: STEREO · 1981)" aria-label="작은 글씨">
+      <legend data-i18n="text">글자</legend>
+      <input type="text" id="t-title" placeholder="앨범 제목" aria-label="앨범 제목" data-i18n-attr="placeholder:titlePh;aria-label:titlePh">
+      <input type="text" id="t-artist" placeholder="아티스트" aria-label="아티스트" data-i18n-attr="placeholder:artistPh;aria-label:artistPh">
+      <input type="text" id="t-small" placeholder="작은 글씨 (예: STEREO · 1981)" aria-label="작은 글씨" data-i18n-attr="placeholder:smallPh;aria-label:small">
     </fieldset>
 
     <fieldset>
-      <legend>글꼴</legend>
-      <div class="seg" id="t-font" role="group" aria-label="글꼴">
-        <button data-v="script">필기체</button><button data-v="modern">모던</button><button data-v="serif">세리프</button><button data-v="none">글자 없음</button>
+      <legend data-i18n="font">글꼴</legend>
+      <div class="seg" id="t-font" role="group" aria-label="글꼴" data-i18n-attr="aria-label:font">
+        <button data-v="script" data-i18n="fScript">필기체</button><button data-v="modern" data-i18n="fModern">모던</button><button data-v="serif" data-i18n="fSerif">세리프</button><button data-v="none" data-i18n="fNone">글자 없음</button>
       </div>
     </fieldset>
 
     <fieldset>
-      <legend>위치와 색</legend>
-      <select id="t-pos" aria-label="글자 위치">
-        <option value="tl">왼쪽 위</option><option value="tc">가운데 위</option><option value="tr">오른쪽 위</option>
-        <option value="bl">왼쪽 아래</option><option value="bc">가운데 아래</option><option value="br">오른쪽 아래</option>
+      <legend data-i18n="posColor">위치와 색</legend>
+      <select id="t-pos" aria-label="글자 위치" data-i18n-attr="aria-label:pos">
+        <option value="tl" data-i18n="tl">왼쪽 위</option><option value="tc" data-i18n="tc">가운데 위</option><option value="tr" data-i18n="tr">오른쪽 위</option>
+        <option value="bl" data-i18n="bl">왼쪽 아래</option><option value="bc" data-i18n="bc">가운데 아래</option><option value="br" data-i18n="br">오른쪽 아래</option>
       </select>
-      <div class="swatches" id="t-color" role="group" aria-label="글자 색"></div>
+      <div class="swatches" id="t-color" role="group" aria-label="글자 색" data-i18n-attr="aria-label:color"></div>
     </fieldset>
 
     <fieldset>
-      <legend>띠지 (오비)</legend>
-      <label class="check"><input type="checkbox" id="obi-on"> 일본 LP 띠지 두르기</label>
-      <div class="seg" id="obi-color" role="group" aria-label="띠지 색">
-        <button data-v="#f7f3ea">흰색</button><button data-v="#d8343f">빨강</button><button data-v="#f2c230">노랑</button><button data-v="#1d2a5c">네이비</button>
+      <legend data-i18n="obi">띠지 (오비)</legend>
+      <label class="check"><input type="checkbox" id="obi-on"> <span data-i18n="obiOn">일본 LP 띠지 두르기</span></label>
+      <div class="seg" id="obi-color" role="group" aria-label="띠지 색" data-i18n-attr="aria-label:obiColor">
+        <button data-v="#f7f3ea" data-i18n="white">흰색</button><button data-v="#d8343f" data-i18n="red">빨강</button><button data-v="#f2c230" data-i18n="yellow">노랑</button><button data-v="#1d2a5c" data-i18n="navy">네이비</button>
       </div>
     </fieldset>
 
-    <label class="check"><input type="checkbox" id="record-on" checked> 레코드 같이 보기 (미리보기만)</label>
-    <button class="save" id="save">커버 저장 · 3000×3000 PNG</button>
-    <p class="hint">장면은 저장하는 순간의 모습 그대로 담깁니다 (바람, 윤슬, 반사까지).</p>
+    <label class="check"><input type="checkbox" id="record-on" checked> <span data-i18n="record">레코드 같이 보기 (미리보기만)</span></label>
+    <button class="save" id="save" data-i18n="save">커버 저장 · 3000×3000 PNG</button>
+    <p class="hint" data-i18n="hint">장면은 저장하는 순간의 모습 그대로 담깁니다 (바람, 윤슬, 반사까지).</p>
   </div>
 </div>
 
-<script src="/nagai-scene.min.js?v=1.4.1"></script>
+<script src="/nagai-scene.min.js?v=1.5.0"></script>
 <script>
-const CONFIG = {"mood": "dusk", "music": {"src": "달궈진_정수리.mp3", "title": "달궈진 정수리", "artist": "Nagai Style"}, "title": "Dalguojin Jungsuri", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 1};
+const CONFIG = {"mood": "dusk", "music": {"src": "달궈진_정수리.mp3", "title": "달궈진 정수리", "artist": "Nagai Style"}, "lang": "auto", "title": "Dalguojin Jungsuri", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 1};
+
+// ── 화면 문구 (한국어 / 영어). CONFIG.lang: 'ko' (기본) | 'en' | 'auto' (주소 ?lang= → 마지막 선택 → 브라우저 언어)
+const TEXT = {
+  ko: {
+    lang: '언어', sub: "절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작", scene: '장면', text: '글자',
+    titlePh: '앨범 제목', artistPh: '아티스트', smallPh: '작은 글씨 (예: STEREO · 1981)', small: '작은 글씨',
+    font: '글꼴', fScript: '필기체', fModern: '모던', fSerif: '세리프', fNone: '글자 없음',
+    posColor: '위치와 색', pos: '글자 위치', tl: '왼쪽 위', tc: '가운데 위', tr: '오른쪽 위', bl: '왼쪽 아래', bc: '가운데 아래', br: '오른쪽 아래',
+    color: '글자 색', colors: ['흰색', '크림', '핑크', '네이비', '검정'],
+    obi: '띠지 (오비)', obiOn: '일본 LP 띠지 두르기', obiColor: '띠지 색', white: '흰색', red: '빨강', yellow: '노랑', navy: '네이비',
+    record: '레코드 같이 보기 (미리보기만)', save: '커버 저장 · 3000×3000 PNG', quickSave: '커버 저장 (3000×3000 PNG)',
+    saving: '저장 중…', saved: '저장됨', declined: '저장 취소됨', busy: '잠시 후 다시', failed: '저장 실패',
+    hint: '장면은 저장하는 순간의 모습 그대로 담깁니다 (바람, 윤슬, 반사까지).', play: '음악 재생', pause: '음악 멈춤',
+  },
+  en: {
+    lang: 'Language', sub: 'Procedurally generated city-pop vinyl covers in the style of Hiroshi Nagai', scene: 'Scene', text: 'Text',
+    titlePh: 'Album title', artistPh: 'Artist', smallPh: 'Small print (e.g. STEREO · 1981)', small: 'Small print',
+    font: 'Typeface', fScript: 'Script', fModern: 'Modern', fSerif: 'Serif', fNone: 'No text',
+    posColor: 'Position & color', pos: 'Text position', tl: 'Top left', tc: 'Top center', tr: 'Top right', bl: 'Bottom left', bc: 'Bottom center', br: 'Bottom right',
+    color: 'Text color', colors: ['White', 'Cream', 'Pink', 'Navy', 'Black'],
+    obi: 'Obi strip', obiOn: 'Wrap a Japanese LP obi', obiColor: 'Obi color', white: 'White', red: 'Red', yellow: 'Yellow', navy: 'Navy',
+    record: 'Show the record (preview only)', save: 'Save cover · 3000×3000 PNG', quickSave: 'Save cover (3000×3000 PNG)',
+    saving: 'Saving…', saved: 'Saved', declined: 'Canceled', busy: 'Try again shortly', failed: 'Save failed',
+    hint: 'The scene is saved exactly as it looks at that moment — wind, glints and reflections included.', play: 'Play music', pause: 'Pause music',
+  },
+};
+let LANG = 'ko';
+const t = (k) => TEXT[LANG][k];
 
 // 처음 장면: CONFIG.mood 가 있으면 그 분위기(day 오후 · dusk 해질녘 · evening 저녁)의 무작위 시드, 없으면 CONFIG.seed
 function startSeed() {
@@ -196,11 +229,12 @@ const nagai = window.nagai = NagaiScene.mount({
   canvas: '#art', controls: '#scene-ctl', aspect: '1:1',
   seed: startSeed(), force: CONFIG.force || {}, wind: CONFIG.wind ?? 0.6,
   ui: { aspect: false, save: false, info: false },
+  lang: CONFIG.lang || 'ko',
   onChange: () => { if (window.nagai) { paintDisc(); drawPreview(); } },   // 첫 그림(장착 중)에는 아직 nagai 가 없다
 });
 
 // ── 커버 글자 상태
-const COLORS = [['#fbf7ef', '흰색'], ['#f6e3bf', '크림'], ['#f28fb0', '핑크'], ['#1d2a5c', '네이비'], ['#15121c', '검정']];
+const COLORS = [['#fbf7ef', '흰색'], ['#f6e3bf', '크림'], ['#f28fb0', '핑크'], ['#1d2a5c', '네이비'], ['#15121c', '검정']];   // 이름은 applyLang 이 언어에 맞춰 바꾼다
 const S = {
   title: CONFIG.title || 'Summer Breeze', artist: CONFIG.artist || 'NAGAI STYLE', small: CONFIG.small ?? 'STEREO',
   font: CONFIG.font || 'script', pos: CONFIG.pos || 'tl', color: CONFIG.color || COLORS[0][0],
@@ -340,28 +374,46 @@ async function saveCover() {
   ctx.drawImage(t, 0, 0);
   const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
   const slug = (S.title || 'cover').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 40) || 'cover';
-  return NagaiScene.saveFile(blob, `cover-${slug}-${nagai.state.seed}.png`);
+  return NagaiScene.saveFile(blob, `cover-${slug}-${nagai.state.seed}.png`, LANG);
 }
 let saving = false;
 async function onSave() {
   if (saving) return;
   saving = true;
   const big = $('save'), quick = $('quick-save');
-  big.disabled = quick.disabled = true; big.textContent = '저장 중…';
+  big.disabled = quick.disabled = true; big.textContent = t('saving');
   let msg;
   try {
     const status = await saveCover();
-    msg = status === 'declined' ? '저장 취소됨' : status === 'busy' ? '잠시 후 다시' : '저장됨';
-  } catch (e) { msg = '저장 실패'; }
+    msg = status === 'declined' ? t('declined') : status === 'busy' ? t('busy') : t('saved');
+  } catch (e) { msg = t('failed'); }
   big.textContent = msg; quick.setAttribute('aria-label', msg); quick.title = msg;
   setTimeout(() => {
-    big.disabled = quick.disabled = false; big.textContent = '커버 저장 · 3000×3000 PNG';
-    quick.setAttribute('aria-label', '커버 저장 (3000×3000 PNG)'); quick.title = '커버 저장 (3000×3000 PNG)';
+    big.disabled = quick.disabled = false; big.textContent = t('save');
+    quick.setAttribute('aria-label', t('quickSave')); quick.title = t('quickSave');
     saving = false;
   }, 1600);
 }
 $('save').addEventListener('click', onSave);
 $('quick-save').addEventListener('click', onSave);
+
+// ── 언어 적용: data-i18n(글자), data-i18n-attr("속성:키;…"), 글자 색 이름, 장면 컨트롤(라이브러리), 재생 버튼
+let onLangChange = () => {};
+function applyLang(lang, remember) {
+  LANG = lang === 'en' ? 'en' : 'ko';
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach((e) => { if (!saving || e.id !== 'save') e.textContent = t(e.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-attr]').forEach((e) => {
+    for (const pair of e.dataset.i18nAttr.split(';')) { const [attr, key] = pair.split(':'); e.setAttribute(attr, t(key)); }
+  });
+  $('t-color').querySelectorAll('.swatch').forEach((b, i) => { b.title = t('colors')[i]; b.setAttribute('aria-label', t('colors')[i]); });
+  if (!saving) { $('quick-save').setAttribute('aria-label', t('quickSave')); $('quick-save').title = t('quickSave'); }
+  $('lang').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === LANG)));
+  if (remember) nagai.setLang(LANG);                                          // 장면 컨트롤도 같은 언어로 (고른 언어는 기억)
+  onLangChange();
+}
+$('lang').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) applyLang(b.dataset.v, true); });
+applyLang(nagai.lang, false);
 
 // ── 음악: LP 를 트는 것처럼 (CONFIG.music = { src, title, artist })
 //   커버 가운데 재생 버튼(또는 레코드)을 누르면 판이 돌기 시작하고 톤암이 들어와 바늘을 내린 뒤 음악이 나온다.
@@ -383,10 +435,11 @@ function setupRecordPlayer(M) {
   let mode = 'stopped', token = 0, unlocked = false;                    // mode: stopped | starting | playing
   const setButton = (on) => {
     btn.innerHTML = on ? ICON.pause : ICON.play;
-    const label = (on ? '음악 멈춤' : '음악 재생') + (M.title ? ` — ${M.title}` : '');
+    const label = (on ? t('pause') : t('play')) + (M.title ? ` — ${M.title}` : '');
     btn.setAttribute('aria-label', label); btn.title = label; btn.setAttribute('aria-pressed', String(on));
   };
   setButton(false);
+  onLangChange = () => setButton(mode !== 'stopped');
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // 휴대폰(특히 아이폰)은 누른 바로 그 순간에 play() 해 본 오디오만 나중에 틀 수 있게 허락한다. 그래서 누르자마자

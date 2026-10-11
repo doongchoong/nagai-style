@@ -17,6 +17,7 @@ config.json 예시:
   "description": "",            # (선택) 페이지 설명 meta 태그
   "head_html": "",              # (선택) <head> 에 그대로 넣을 태그 (홈 화면 아이콘·manifest·theme-color 등)
   "palm_detail": false,         # (선택) 야자수를 잎마다 정밀하게 (기본 false: 가볍게, 컨트롤에서 바꿀 수 있음)
+  "lang": "ko",                 # (선택) 컨트롤 문구: ko | en | auto (주소 ?lang= → 마지막 선택 → 브라우저 언어). 전환 버튼은 "ui": {"lang": true}
   "lib_src": "",                # (선택) 라이브러리를 품지 않고 링크로: "/nagai-scene.min.js" → <script src="…?v=버전">. 사이트처럼 페이지가 여럿일 때
   "controls": true,             # 컨트롤 표시 여부
   "ui": {"pick": true},         # 컨트롤 일부만: info, seed, jitter, wind, pause, pick
@@ -94,7 +95,7 @@ def build_cover(cfg: dict):
     """앨범 커버 생성기 페이지 (정사각 장면 + 제목·아티스트 타이포 + 일본 LP 띠지 + 3000×3000 저장)"""
     # mood 가 있으면 열 때마다 그 분위기의 시드를 고르므로, seed 는 못 찾았을 때만 쓰는 고정값 (다시 빌드해도 파일이 안 바뀌게)
     seed = cfg.get('seed') or (1 if cfg.get('mood') else random.randint(1, 99999))
-    conf = {k: cfg[k] for k in ('force', 'wind', 'mood', 'music', 'title', 'artist', 'small', 'font', 'pos', 'color', 'obi', 'obiColor') if k in cfg}
+    conf = {k: cfg[k] for k in ('force', 'wind', 'mood', 'music', 'lang', 'title', 'artist', 'small', 'font', 'pos', 'color', 'obi', 'obiColor') if k in cfg}
     conf['seed'] = seed
     page = (COVER.replace('__TITLE__', html.escape(cfg.get('title_page', 'City Pop Cover')))
             .replace('</head>', head_extra(cfg) + '</head>', 1)
@@ -126,6 +127,8 @@ def build(cfg: dict):
     opts['urlState'] = cfg.get('url_state', layout == 'fullscreen')
     if cfg.get('palm_detail'):
         opts['palmDetail'] = True        # 야자수를 잎마다(휘고 떨림) 그리기. 기본은 가볍게(잎 도장)
+    if cfg.get('lang'):
+        opts['lang'] = cfg['lang']       # 컨트롤 문구 언어 (ko | en | auto)
     title = cfg.get('title', '나가이 히로시 스타일')
     css = FULL_CSS if layout == 'fullscreen' else EMBED_CSS
     desc = cfg.get('description', '')

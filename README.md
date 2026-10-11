@@ -29,6 +29,7 @@ The repository holds three things:
 - **Landscape, portrait and square.** 3:2, 9:16 (phone wallpaper) and 1:1 (album cover) each get their own composition.
 - **High-resolution export.** 2400×1600, 1440×2560 or 3000×3000 PNG, with film grain kept at the scale you saw on screen.
 - **Album cover maker.** Script, modern or serif type, Japanese LP obi, record sleeve mockup, and an optional record player with a tonearm.
+- **Korean / English.** Both pages pick the browser language and have a 한 / EN switch (`?lang=en` / `?lang=ko` works too).
 - **No dependencies.** One JavaScript file (about 96 KB minified), plain Canvas 2D.
 
 ## Use it with Claude

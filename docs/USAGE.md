@@ -56,9 +56,10 @@ python3 skills/nagai-motion/scripts/build_page.py config.json out.html
 | `aspect` | `3:2` landscape · `9:16` portrait · `1:1` square · `auto` (portrait on tall screens) | `3:2` |
 | `layout` | `fullscreen` · `embed` (inside an article) · `cover` (album cover maker) | `fullscreen` |
 | `controls` | Show the control panel | `true` |
-| `ui` | Show only some controls: `{ "info", "random", "seed", "jitter", "wind", "pause", "pick", "aspect", "save", "palm" }` | all on |
+| `ui` | Show only some controls: `{ "info", "random", "seed", "jitter", "wind", "pause", "pick", "aspect", "save", "palm", "lang" }` | all on except `lang` |
 | `url_state` | Keep the scene in the address (`#nagai=…`) | on for `fullscreen` |
 | `palm_detail` | Palms drawn leaf by leaf (heavier) instead of the light stamped fronds | `false` |
+| `lang` | Control language: `ko` · `en` · `auto` (`?lang=` in the address → last choice → browser language). Add `"ui": {"lang": true}` for a 한 / EN switch | `ko` |
 | `lib_src` | Link the library instead of embedding it, e.g. `"/nagai-scene.min.js"` (adds `?v=version`) | embedded |
 | `description` | `<meta name="description">` | — |
 | `head_html` | Extra tags for `<head>` (home-screen icons, manifest, theme color …) | — |
@@ -89,9 +90,10 @@ const scene = NagaiScene.mount({
   autoplay: true, grain: true, maxPixelRatio: 2,
   fps: 30,                   // frames per second; motion speed is time-based
   palmDetail: false,
+  lang: 'ko',                // 'ko' | 'en' | 'auto' — language of the controls
   urlState: false,           // read and write #nagai=<scene code>
   exportSize: null,          // { '3:2': [2400, 1600], '9:16': [1440, 2560], '1:1': [3000, 3000] }
-  ui: {},                    // turn individual controls off, e.g. { save: false }
+  ui: {},                    // turn controls off, e.g. { save: false }; { lang: true } adds a 한 / EN switch
   extend: (spec, helpers) => spec,
   onChange: (state) => {},
 });
@@ -112,6 +114,7 @@ The object `mount` returns:
 | `setAspect('3:2' \| '9:16' \| '1:1')` | Switch aspect |
 | `setWind(v)`, `play()`, `pause()`, `toggle()` | Motion |
 | `setPalmDetail(bool)` | Light or detailed palms |
+| `lang`, `setLang('ko' \| 'en')` | Read or switch the control language (remembered for `lang: 'auto'` pages) |
 | `code`, `setCode('83608-12 9:16 sky:violet')` | Read or open a scene code |
 | `shareText()` | Link with the scene, or the scene code inside an iframe |
 | `savePNG()` | Download the current moment as a high-resolution PNG |
@@ -125,7 +128,7 @@ The object `mount` returns:
 <canvas data-nagai data-seed="7" data-aspect="9:16" data-force='{"theme":"coastRoad"}' data-controls></canvas>
 ```
 
-Also `data-controls="#id"`, `data-url-state`, `data-wind`, `data-jitter`, `data-autoplay="false"`, `data-grain="false"`.
+Also `data-controls="#id"`, `data-url-state`, `data-wind`, `data-jitter`, `data-autoplay="false"`, `data-grain="false"`, `data-lang="en"`.
 
 ### Scene codes
 
@@ -193,6 +196,7 @@ Draw order is by `phase` (`back` → `sea` → `flat` → `pool` → `stand`), t
 | Key | Values |
 |---|---|
 | `seed` / `mood` | A fixed seed, or `day` · `dusk` · `evening` to open on a random scene of that mood every visit |
+| `lang` | `ko` · `en` · `auto`. The page has a 한 / EN switch next to its title that also switches the scene controls |
 | `font` | `script` (Yellowtail) · `modern` (Jost) · `serif` (Playfair Display) · `none` |
 | `pos` | `tl`, `tc`, `tr`, `bl`, `bc`, `br` |
 | `obi` | Wrap a Japanese LP obi strip; CJK titles stack vertically, Latin titles are rotated |
