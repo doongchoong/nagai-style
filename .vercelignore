@@ -1,0 +1,9 @@
+# 사이트에 필요 없는 파일은 배포하지 않는다 (스킬 원본·문서·플러그인 설정·빌드 재료)
+skills/
+docs/
+dist/
+.claude-plugin/
+*.md
+*.config.json
+build.sh
+pack.sh

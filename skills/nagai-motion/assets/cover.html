@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>__TITLE__</title>
+<meta name="description" content="절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;500;600&family=Playfair+Display:ital,wght@1,600&family=Yellowtail&display=swap">
+<style>
+:root{
+  --bg:#f3efe6; --panel:#fffdf8; --ink:#1d1a26; --muted:#6b6577; --line:rgba(29,26,38,.14); --accent:#d2486e;
+  --stage:#e7e1d4;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){ --bg:#15131c; --panel:#1e1b28; --ink:#efeaf6; --muted:#a59fb3; --line:rgba(239,234,246,.14); --accent:#f07ca0; --stage:#0f0d15; }
+}
+:root[data-theme="dark"]{ --bg:#15131c; --panel:#1e1b28; --ink:#efeaf6; --muted:#a59fb3; --line:rgba(239,234,246,.14); --accent:#f07ca0; --stage:#0f0d15; }
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Jost","Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 340px;height:100vh;height:100dvh}
+.stage{background:var(--stage);display:grid;place-items:center;padding:32px 16px;overflow:hidden}
+.sleeve{position:relative;width:min(100%,calc(100dvh - 64px),720px);aspect-ratio:1;transition:transform .5s ease,width .5s ease}
+/* 레코드를 같이 보일 때는 커버를 줄이고 왼쪽으로 비켜서, 커버와 레코드가 둘 다 무대 안에 들어오게 */
+.sleeve.with-record{width:min(82%,calc(100dvh - 64px),640px);transform:translateX(-11%)}
+.disc{position:absolute;top:3%;left:3%;width:94%;aspect-ratio:1;border-radius:50%;opacity:0;transition:transform .5s ease,opacity .3s;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+/* 도는 판: 홈 + 라벨(인쇄 글자가 같이 돌아서 회전이 보인다) */
+.vinyl{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,var(--label) 0 15%,#101010 15.5% 16.5%,#1b1b1b 17% 100%)}
+.vinyl::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:repeating-radial-gradient(circle,rgba(255,255,255,.05) 0 1px,transparent 1px 4px),radial-gradient(circle,#000 0 1.2%,transparent 1.3%)}
+.vinyl svg{position:absolute;inset:0;width:100%;height:100%}
+/* 판 위의 빛 반사는 판이 돌아도 제자리 */
+.glare{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:conic-gradient(from 20deg,transparent 0 25deg,rgba(255,255,255,.09) 40deg,transparent 55deg 205deg,rgba(255,255,255,.06) 220deg,transparent 235deg)}
+/* 톤암: 음악이 있을 때만. 재생하면 판 위로 돌아 들어와 바늘을 내린다 */
+.arm{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;display:none;filter:drop-shadow(0 4px 4px rgba(0,0,0,.35))}
+.has-music .arm{display:block}
+.has-music .disc{cursor:pointer}
+#arm-g{transform-origin:97px 6px;transform:rotate(-42deg);transition:transform 1s cubic-bezier(.45,.05,.25,1)}
+.playing #arm-g{transform:rotate(0deg)}
+.with-record .disc{opacity:1;transform:translateX(24%)}
+.cover{position:absolute;inset:0;box-shadow:0 18px 40px rgba(0,0,0,.28),0 2px 6px rgba(0,0,0,.2)}
+.cover canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
+/* 커버 모서리의 작은 저장 버튼: 미리보기를 보면서 바로 저장 */
+.quick-save{position:absolute;top:8px;right:8px;z-index:2;width:40px;height:40px;border-radius:50%;border:0;cursor:pointer;
+  background:rgba(16,14,24,.55);color:#fff;display:grid;place-items:center;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.quick-save svg{width:20px;height:20px}
+.quick-save:disabled{opacity:.6;cursor:default}
+.quick-save:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* 음악이 있으면 커버 가운데에 옅은 재생 버튼. 재생 중에는 거의 사라졌다가 커버에 마우스를 올리면 보인다 */
+.cover-play{position:absolute;left:50%;top:50%;z-index:2;width:clamp(52px,16%,84px);aspect-ratio:1;translate:-50% -50%;border-radius:50%;border:0;cursor:pointer;
+  background:rgba(16,14,24,.32);color:rgba(255,255,255,.92);display:none;place-items:center;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  opacity:.75;transition:opacity .3s ease,background .2s ease}
+.has-music .cover-play{display:grid}
+.cover-play svg{width:42%;height:42%}
+.cover-play:hover{background:rgba(16,14,24,.5);opacity:1}
+.playing .cover-play{opacity:0}
+.playing .cover:hover .cover-play,.cover-play:focus-visible{opacity:.85}
+@media (hover:none){.playing .cover-play{opacity:.22}}
+.cover-play:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{background:var(--panel);border-left:1px solid var(--line);padding:20px 18px 28px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+h1{font-size:18px;font-weight:600;margin:0;letter-spacing:.02em}
+.sub{color:var(--muted);font-size:13px;margin:-10px 0 0}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+legend,.lbl{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;padding:0}
+input[type=text],select{font:inherit;font-size:15px;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button,.swatch{font:inherit;font-size:14px;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{width:30px;height:30px;padding:0;border-radius:50%;background:var(--c)}
+.swatch[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px}
+.check{display:flex;align-items:center;gap:8px;font-size:15px}
+.check input{width:18px;height:18px;accent-color:var(--accent)}
+.save{font:inherit;font-size:16px;font-weight:600;color:#fff;background:var(--accent);border:0;border-radius:10px;padding:12px;cursor:pointer}
+.save:disabled{opacity:.6;cursor:default}
+.hint{font-size:12px;color:var(--muted);margin:0}
+#scene-ctl{font-size:14px}
+#scene-ctl.nagai-ctl{--nagai-accent:var(--accent)}   /* 장면 컨트롤 버튼도 커버 저장 버튼과 같은 산호색 */
+#scene-ctl .nagai-ctl{margin:0}
+#scene-ctl .nagai-ctl-seed input{max-width:170px}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr;height:auto}
+  .panel{overflow:visible;border-left:0;border-top:1px solid var(--line)}
+  /* 미리보기는 화면 위에 붙여 두고, 아래 패널만 스크롤 */
+  .stage{position:sticky;top:0;z-index:5;height:42vh;height:42svh;padding:12px 16px;box-shadow:0 6px 16px rgba(0,0,0,.12)}
+  .sleeve{width:min(100%,calc(42svh - 24px),520px)}
+  /* 레코드는 커버 뒤에서 오른쪽으로 빼꼼 — 화면 끝에서 살짝 잘려도 괜찮다 (커버를 크게 두려고) */
+  .sleeve.with-record{width:min(86%,calc(42svh - 24px),440px);transform:translateX(-8%)}
+  .with-record .disc{transform:translateX(30%)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+    <div class="sleeve" id="sleeve">
+      <div class="disc" id="disc" aria-hidden="true">
+        <div class="vinyl" id="vinyl">
+          <svg viewBox="0 0 100 100"><defs><path id="lbl-arc" d="M50,50 m-7.6,0 a7.6,7.6 0 1,1 15.2,0 a7.6,7.6 0 1,1 -15.2,0"/></defs>
+            <text font-family="Jost, sans-serif" font-size="1.9" font-weight="600" letter-spacing=".25" fill="rgba(20,16,28,.72)"><textPath href="#lbl-arc" id="lbl-text">NAGAI STYLE · SIDE A · 33⅓ RPM</textPath></text>
+            <rect x="46.2" y="53.4" width="7.6" height=".9" rx=".4" fill="rgba(20,16,28,.55)"/></svg>
+        </div>
+        <div class="glare"></div>
+        <svg class="arm" viewBox="0 0 100 100"><g id="arm-g">
+          <circle cx="97" cy="6" r="5.2" fill="#9aa3ad"/><circle cx="97" cy="6" r="3.6" fill="#dfe4e9"/>
+          <path d="M98.6,1.6 L100.8,-4.6" stroke="#3a3f47" stroke-width="3.4" stroke-linecap="round"/>
+          <path d="M97,6 L88.6,33.5 L86.6,38" fill="none" stroke="#e9edf1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M97,6 L88.6,33.5 L86.6,38" fill="none" stroke="#8d96a3" stroke-width=".45" stroke-linecap="round" transform="translate(.45 .1)"/>
+          <rect x="83.2" y="36.4" width="6.4" height="4.2" rx=".8" fill="#1d1d22" transform="rotate(24 86.4 38.5)"/>
+          <rect x="85.4" y="39.6" width="2" height="1.8" fill="#c9a14a" transform="rotate(24 86.4 38.5)"/>
+        </g></svg>
+      </div>
+      <div class="cover"><canvas id="art"></canvas><canvas id="type" aria-hidden="true"></canvas>
+        <button class="cover-play" id="cover-play" aria-label="음악 재생" aria-pressed="false"></button>
+        <button class="quick-save" id="quick-save" aria-label="커버 저장 (3000×3000 PNG)" title="커버 저장 (3000×3000 PNG)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 19h14"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <h1>City Pop Cover</h1>
+    <p class="sub">절차적 생성으로 '히로시 나가이' 스타일의 시티 팝 앨범 바이닐 커버 제작</p>
+
+    <fieldset>
+      <legend>장면</legend>
+      <div id="scene-ctl"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>글자</legend>
+      <input type="text" id="t-title" placeholder="앨범 제목" aria-label="앨범 제목">
+      <input type="text" id="t-artist" placeholder="아티스트" aria-label="아티스트">
+      <input type="text" id="t-small" placeholder="작은 글씨 (예: STEREO · 1981)" aria-label="작은 글씨">
+    </fieldset>
+
+    <fieldset>
+      <legend>글꼴</legend>
+      <div class="seg" id="t-font" role="group" aria-label="글꼴">
+        <button data-v="script">필기체</button><button data-v="modern">모던</button><button data-v="serif">세리프</button><button data-v="none">글자 없음</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>위치와 색</legend>
+      <select id="t-pos" aria-label="글자 위치">
+        <option value="tl">왼쪽 위</option><option value="tc">가운데 위</option><option value="tr">오른쪽 위</option>
+        <option value="bl">왼쪽 아래</option><option value="bc">가운데 아래</option><option value="br">오른쪽 아래</option>
+      </select>
+      <div class="swatches" id="t-color" role="group" aria-label="글자 색"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>띠지 (오비)</legend>
+      <label class="check"><input type="checkbox" id="obi-on"> 일본 LP 띠지 두르기</label>
+      <div class="seg" id="obi-color" role="group" aria-label="띠지 색">
+        <button data-v="#f7f3ea">흰색</button><button data-v="#d8343f">빨강</button><button data-v="#f2c230">노랑</button><button data-v="#1d2a5c">네이비</button>
+      </div>
+    </fieldset>
+
+    <label class="check"><input type="checkbox" id="record-on" checked> 레코드 같이 보기 (미리보기만)</label>
+    <button class="save" id="save">커버 저장 · 3000×3000 PNG</button>
+    <p class="hint">장면은 저장하는 순간의 모습 그대로 담깁니다 (바람, 윤슬, 반사까지).</p>
+  </div>
+</div>
+
+<script>
+/*__NAGAI_LIB__*/
+</script>
+<script>
+const CONFIG = /*__COVER_CONFIG__*/;
+
+// 처음 장면: CONFIG.mood 가 있으면 그 분위기(day 오후 · dusk 해질녘 · evening 저녁)의 무작위 시드, 없으면 CONFIG.seed
+function startSeed() {
+  const want = { day: ['deep', 'bright'], dusk: ['dusk'], evening: ['violet'] }[CONFIG.mood];
+  if (!want) return CONFIG.seed;
+  for (let i = 0; i < 400; i++) {
+    const seed = 1 + Math.floor(Math.random() * 99999);
+    if (want.includes(NagaiScene.composeScene(seed, { force: CONFIG.force || {}, width: 1000, height: 1000 }).choice.sky)) return seed;
+  }
+  return CONFIG.seed;
+}
+
+// ── 장면: 정사각, 컨트롤은 패널 안에 (비율·사진 저장 버튼은 커버 페이지가 맡는다)
+const nagai = window.nagai = NagaiScene.mount({
+  canvas: '#art', controls: '#scene-ctl', aspect: '1:1',
+  seed: startSeed(), force: CONFIG.force || {}, wind: CONFIG.wind ?? 0.6,
+  ui: { aspect: false, save: false, info: false },
+  onChange: () => { if (window.nagai) { paintDisc(); drawPreview(); } },   // 첫 그림(장착 중)에는 아직 nagai 가 없다
+});
+
+// ── 커버 글자 상태
+const COLORS = [['#fbf7ef', '흰색'], ['#f6e3bf', '크림'], ['#f28fb0', '핑크'], ['#1d2a5c', '네이비'], ['#15121c', '검정']];
+const S = {
+  title: CONFIG.title || 'Summer Breeze', artist: CONFIG.artist || 'NAGAI STYLE', small: CONFIG.small ?? 'STEREO',
+  font: CONFIG.font || 'script', pos: CONFIG.pos || 'tl', color: CONFIG.color || COLORS[0][0],
+  obi: !!CONFIG.obi, obiColor: CONFIG.obiColor || '#f7f3ea',
+};
+
+const $ = (id) => document.getElementById(id);
+$('t-title').value = S.title; $('t-artist').value = S.artist; $('t-small').value = S.small; $('t-pos').value = S.pos; $('obi-on').checked = S.obi;
+for (const [id, key] of [['t-title', 'title'], ['t-artist', 'artist'], ['t-small', 'small']]) $(id).addEventListener('input', (e) => { S[key] = e.target.value; drawPreview(); });
+$('t-pos').addEventListener('change', (e) => { S.pos = e.target.value; drawPreview(); });
+$('obi-on').addEventListener('change', (e) => { S.obi = e.target.checked; drawPreview(); });
+$('record-on').addEventListener('change', (e) => $('sleeve').classList.toggle('with-record', e.target.checked));
+$('record-on').checked = true;                                            // 레코드 기본 켬 (휴대폰은 화면 끝에서 빼꼼)
+$('sleeve').classList.toggle('with-record', $('record-on').checked);
+
+function segment(id, key) {
+  const box = $(id), sync = () => box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === S[key])));
+  box.addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; S[key] = b.dataset.v; sync(); drawPreview(); });
+  sync();
+}
+segment('t-font', 'font');
+segment('obi-color', 'obiColor');
+for (const [c, name] of COLORS) {
+  const b = document.createElement('button');
+  b.className = 'swatch'; b.style.setProperty('--c', c); b.title = name; b.setAttribute('aria-label', name); b.dataset.v = c;
+  $('t-color').appendChild(b);
+}
+segment('t-color', 'color');
+
+// ── 글자 그리기 (미리보기와 저장이 같은 함수를 쓴다: N = 한 변 픽셀)
+const FONTS = {
+  script: { title: (n) => `${n}px Yellowtail, "Brush Script MT", cursive`, titleSize: 0.13, caps: false },
+  modern: { title: (n) => `300 ${n}px Jost, Futura, "Avenir Next", sans-serif`, titleSize: 0.075, caps: true, track: 0.18 },
+  serif: { title: (n) => `italic 600 ${n}px "Playfair Display", Georgia, serif`, titleSize: 0.095, caps: false },
+};
+const SMALL_FONT = (n, w = 500) => `${w} ${n}px Jost, Futura, "Avenir Next", sans-serif`;
+const hasCJK = (t) => /[぀-ヿ㐀-鿿가-힯]/.test(t);
+
+function setTracking(ctx, em) { if ('letterSpacing' in ctx) ctx.letterSpacing = em ? `${em}em` : '0px'; }
+
+function drawText(ctx, N) {
+  ctx.clearRect(0, 0, N, N);
+  const obiW = S.obi ? N * 0.12 : 0;
+  if (S.obi) drawObi(ctx, N, obiW);
+  if (S.font === 'none') return;
+  const F = FONTS[S.font], m = N * 0.065;
+  const left = obiW + m, right = N - m, maxW = right - left;
+  const [v, h] = [S.pos[0], S.pos[1]];
+  const align = h === 'l' ? 'left' : h === 'r' ? 'right' : 'center';
+  const x = align === 'left' ? left : align === 'right' ? right : (left + right) / 2;
+  ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = S.color;
+
+  // 줄 구성: 제목(크게) · 아티스트(넓은 자간 대문자) · 작은 글씨
+  const lines = [];
+  const title = F.caps ? S.title.toUpperCase() : S.title;
+  if (title.trim()) lines.push({ text: title, font: F.title, size: N * F.titleSize, track: F.track || 0 });
+  if (S.artist.trim()) lines.push({ text: S.artist.toUpperCase(), font: (n) => SMALL_FONT(n, 600), size: N * 0.032, track: 0.32, gap: 0.5 });
+  if (S.small.trim()) lines.push({ text: S.small.toUpperCase(), font: (n) => SMALL_FONT(n, 500), size: N * 0.02, track: 0.4, gap: 0.6 });
+  // 길면 폭에 맞춰 줄인다
+  for (const L of lines) {
+    ctx.font = L.font(L.size); setTracking(ctx, L.track);
+    const w = ctx.measureText(L.text).width;
+    if (w > maxW) L.size *= maxW / w;
+  }
+  const heights = lines.map((L, i) => L.size * (i === 0 ? 1 : 1) + (i ? L.size * (L.gap || 0.4) + N * 0.008 : 0));
+  const block = heights.reduce((a, b) => a + b, 0);
+  let y = v === 't' ? m : N - m - block;
+  for (const [i, L] of lines.entries()) {
+    y += heights[i];
+    ctx.font = L.font(L.size); setTracking(ctx, L.track);
+    ctx.fillText(L.text, x, y - L.size * (i === 0 ? 0.18 : 0.12));
+  }
+  setTracking(ctx, 0);
+}
+
+// 띠지: 왼쪽 세로 띠. 제목은 세로로 (한글·일본어는 글자를 쌓고, 영문은 돌려서), 위에 STEREO, 아래에 품번·가격
+function drawObi(ctx, N, w) {
+  const bg = S.obiColor, dark = ['#d8343f', '#1d2a5c'].includes(bg), ink = dark ? '#fbf7ef' : '#1d1a26', accent = dark ? '#f2c230' : '#d8343f';
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(w, 0, N * 0.006, N);          // 띠지 그림자
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, N);
+  ctx.fillStyle = accent; ctx.fillRect(0, N * 0.035, w, N * 0.05);                  // 위쪽 색 띠
+  ctx.fillStyle = dark ? bg : '#fbf7ef';
+  ctx.font = SMALL_FONT(N * 0.017, 600); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; setTracking(ctx, 0.2);
+  ctx.fillText('STEREO', w / 2, N * 0.06);
+  setTracking(ctx, 0);
+  ctx.fillStyle = ink;
+  const title = S.title.trim() || ' ', artist = S.artist.trim();
+  const top = N * 0.12, bottom = N * 0.82;
+  if (hasCJK(title)) {                                                               // 글자 쌓기
+    const chars = [...title].slice(0, 14), size = Math.min(w * 0.55, (bottom - top) / chars.length * 0.9);
+    ctx.font = `600 ${size}px "Noto Sans KR", "Hiragino Sans", "Apple SD Gothic Neo", sans-serif`;
+    chars.forEach((c, i) => ctx.fillText(c, w / 2, top + size * (i + 0.6) * 1.08));
+  } else {                                                                           // 돌려 쓰기
+    ctx.save(); ctx.translate(w / 2, top); ctx.rotate(Math.PI / 2);
+    let size = w * 0.42; ctx.font = `600 ${size}px Jost, Futura, sans-serif`;
+    const tw = ctx.measureText(title).width; if (tw > (bottom - top) * 0.62) { size *= (bottom - top) * 0.62 / tw; ctx.font = `600 ${size}px Jost, Futura, sans-serif`; }
+    ctx.textAlign = 'left'; ctx.fillText(title, 0, 0);
+    if (artist) { ctx.font = SMALL_FONT(w * 0.2, 500); setTracking(ctx, 0.15); ctx.globalAlpha = 0.75; ctx.fillText(artist.toUpperCase(), (bottom - top) * 0.66, 0); ctx.globalAlpha = 1; setTracking(ctx, 0); }
+    ctx.restore();
+  }
+  // 아래: 품번 · 가격 (시드로 만든 장식용 번호)
+  ctx.font = SMALL_FONT(N * 0.015, 600); setTracking(ctx, 0.08); ctx.textAlign = 'center';
+  ctx.fillText(`NGS-${String(nagai.state.seed).padStart(5, '0').slice(-5)}`, w / 2, N * 0.9);
+  ctx.font = SMALL_FONT(N * 0.019, 600);
+  ctx.fillText('¥2,800', w / 2, N * 0.94);
+  setTracking(ctx, 0);
+  ctx.restore();
+}
+
+// ── 미리보기: 글자 캔버스를 화면 크기에 맞춰 다시 그린다
+const typeCv = $('type');
+function drawPreview() {
+  const r = typeCv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1), n = Math.round(r.width * dpr);
+  if (!n) return;
+  if (typeCv.width !== n) { typeCv.width = n; typeCv.height = n; }
+  drawText(typeCv.getContext('2d'), n);
+}
+new ResizeObserver(drawPreview).observe(typeCv);
+document.fonts && document.fonts.ready.then(drawPreview);
+for (const f of ['48px Yellowtail', '300 48px Jost', '600 48px Jost', '500 48px Jost', 'italic 600 48px "Playfair Display"']) document.fonts && document.fonts.load(f).then(drawPreview).catch(() => {});
+
+// 레코드 가운데 라벨 색은 하늘을 따라간다
+function paintDisc() {
+  const sky = nagai.state.choice && nagai.state.choice.sky;
+  $('disc').style.setProperty('--label', { deep: '#2f66b8', bright: '#5a95d6', dusk: '#f29bc0', violet: '#a67fdc' }[sky] || '#d2486e');
+}
+paintDisc(); drawPreview();
+
+// ── 저장: 장면 3000×3000 + 글자. 패널의 큰 버튼과 커버 모서리 버튼이 같이 쓴다
+async function saveCover() {
+  if (document.fonts) await document.fonts.ready;
+  const N = 3000, c = nagai.render(N, N), ctx = c.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const t = document.createElement('canvas'); t.width = t.height = N;
+  drawText(t.getContext('2d'), N);
+  ctx.drawImage(t, 0, 0);
+  const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+  const slug = (S.title || 'cover').trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').slice(0, 40) || 'cover';
+  return NagaiScene.saveFile(blob, `cover-${slug}-${nagai.state.seed}.png`);
+}
+let saving = false;
+async function onSave() {
+  if (saving) return;
+  saving = true;
+  const big = $('save'), quick = $('quick-save');
+  big.disabled = quick.disabled = true; big.textContent = '저장 중…';
+  let msg;
+  try {
+    const status = await saveCover();
+    msg = status === 'declined' ? '저장 취소됨' : status === 'busy' ? '잠시 후 다시' : '저장됨';
+  } catch (e) { msg = '저장 실패'; }
+  big.textContent = msg; quick.setAttribute('aria-label', msg); quick.title = msg;
+  setTimeout(() => {
+    big.disabled = quick.disabled = false; big.textContent = '커버 저장 · 3000×3000 PNG';
+    quick.setAttribute('aria-label', '커버 저장 (3000×3000 PNG)'); quick.title = '커버 저장 (3000×3000 PNG)';
+    saving = false;
+  }, 1600);
+}
+$('save').addEventListener('click', onSave);
+$('quick-save').addEventListener('click', onSave);
+
+// ── 음악: LP 를 트는 것처럼 (CONFIG.music = { src, title, artist })
+//   커버 가운데 재생 버튼(또는 레코드)을 누르면 판이 돌기 시작하고 톤암이 들어와 바늘을 내린 뒤 음악이 나온다.
+//   음악은 브라우저가 직접 재생한다 (아이폰 Safari 는 Web Audio 로 음악을 돌리면 멈춰 버리는 문제가 있어 쓰지 않는다)
+if (CONFIG.music && CONFIG.music.src) setupRecordPlayer(CONFIG.music);
+
+function setupRecordPlayer(M) {
+  const sleeve = $('sleeve'), disc = $('disc'), vinyl = $('vinyl'), btn = $('cover-play');
+  const ICON = {
+    play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 4.8v14.4L19.5 12z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/></svg>',
+  };
+  document.body.classList.add('has-music');
+  if (M.title) $('lbl-text').textContent = `${M.title} · SIDE A · 33⅓ RPM`;
+
+  const audio = new Audio();
+  audio.preload = 'none';
+  audio.src = M.src;
+  let mode = 'stopped', token = 0, unlocked = false;                    // mode: stopped | starting | playing
+  const setButton = (on) => {
+    btn.innerHTML = on ? ICON.pause : ICON.play;
+    const label = (on ? '음악 멈춤' : '음악 재생') + (M.title ? ` — ${M.title}` : '');
+    btn.setAttribute('aria-label', label); btn.title = label; btn.setAttribute('aria-pressed', String(on));
+  };
+  setButton(false);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // 휴대폰(특히 아이폰)은 누른 바로 그 순간에 play() 해 본 오디오만 나중에 틀 수 있게 허락한다. 그래서 누르자마자
+  // 재생 → 곧바로 멈춤으로 허락만 받아 두고(소리는 나지 않는다), 톤암이 판 위로 들어와 바늘을 내리면(1초 뒤) 진짜로 튼다.
+  // (소리를 끈 채 재생해 두는 방법은 휴대폰이 '아무도 안 듣는 미디어'로 보고 절전하느라 멈춰 버려서 쓰지 않는다)
+  function play() {
+    const my = ++token;
+    audio.preload = 'auto';                                                      // 톤암이 들어오는 동안 곡을 받기 시작
+    if (!unlocked) {                                                             // 처음 한 번만 (그 뒤엔 곡이 받아져 있어 짧게 소리가 샐 수 있다)
+      const unlock = audio.play();
+      audio.pause();
+      if (unlock) unlock.catch(() => {});
+      unlocked = true;
+    }
+    if (!$('record-on').checked) { $('record-on').checked = true; sleeve.classList.add('with-record'); }
+    mode = 'starting'; setButton(true); sleeve.classList.add('playing'); spin();
+    wait(1000).then(() => {
+      if (my !== token) return;
+      audio.play().then(() => { if (my === token) mode = 'playing'; }, () => { if (my === token) stop(); });
+    });
+  }
+  function stop(ended) {
+    ++token;
+    if (mode === 'stopped') return;
+    audio.pause();
+    if (ended) audio.currentTime = 0;
+    mode = 'stopped'; setButton(false);
+    sleeve.classList.remove('playing');                                          // 톤암이 돌아가고 판은 천천히 멈춘다
+  }
+  const toggle = () => (mode === 'stopped' ? play() : stop());
+  btn.addEventListener('click', toggle);
+  disc.addEventListener('click', toggle);
+  audio.addEventListener('ended', () => stop(true));
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({ title: M.title || '', artist: M.artist || S.artist || '' });
+    navigator.mediaSession.setActionHandler('play', () => mode === 'stopped' && play());
+    navigator.mediaSession.setActionHandler('pause', () => stop());
+  }
+
+  // 판 돌리기 (33⅓ RPM, 켤 때·끌 때 서서히)
+  let raf = 0, last = 0, angle = 0, speed = 0;
+  const DEG = (100 / 3) * 6;
+  function spin() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  function frame(now) {
+    raf = 0;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const on = mode !== 'stopped';
+    speed += ((on ? DEG : 0) - speed) * (1 - Math.exp(-dt / (on ? 0.35 : 0.7)));
+    angle = (angle + speed * dt) % 360;
+    vinyl.style.transform = `rotate(${angle.toFixed(2)}deg)`;
+    if (on || speed > 0.5) raf = requestAnimationFrame(frame);
+  }
+}
+</script>
+</body>
+</html>
