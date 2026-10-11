@@ -171,7 +171,7 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
 
 <script src="/nagai-scene.min.js?v=1.4.1"></script>
 <script>
-const CONFIG = {"mood": "dusk", "music": {"src": "달궈진_정수리.mp3", "title": "달궈진 정수리", "artist": "Nagai Style"}, "title": "Summer Breeze", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 66452};
+const CONFIG = {"mood": "dusk", "music": {"src": "달궈진_정수리.mp3", "title": "달궈진 정수리", "artist": "Nagai Style"}, "title": "Summer Breeze", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 21343};
 
 // 처음 장면: CONFIG.mood 가 있으면 그 분위기(day 오후 · dusk 해질녘 · evening 저녁)의 무작위 시드, 없으면 CONFIG.seed
 function startSeed() {
@@ -374,7 +374,7 @@ function setupRecordPlayer(M) {
   const audio = new Audio();
   audio.preload = 'none';
   audio.src = M.src;
-  let ac = null, analyser = null, bins = null, mode = 'stopped', token = 0;   // mode: stopped | starting | playing
+  let ac = null, analyser = null, bins = null, vol = null, mode = 'stopped', token = 0;   // mode: stopped | starting | playing
   const setButton = (on) => {
     btn.innerHTML = on ? ICON.pause : ICON.play;
     const label = (on ? '음악 멈춤' : '음악 재생') + (M.title ? ` — ${M.title}` : '');
@@ -388,19 +388,30 @@ function setupRecordPlayer(M) {
     const src = ac.createMediaElementSource(audio);
     analyser = ac.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = 0.45;
     bins = new Uint8Array(analyser.frequencyBinCount);
+    vol = ac.createGain();
     src.connect(analyser);
-    src.connect(ac.destination);
+    src.connect(vol).connect(ac.destination);
   }
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  async function play() {
+  // 휴대폰(특히 아이폰 Safari)은 누른 바로 그 순간에 play() 해야 소리를 허락한다. 그래서 누르자마자 소리 0 으로
+  // 재생을 시작해 두고, 톤암이 판 위로 들어와 바늘을 내리면(1초 뒤) 처음 위치로 돌려 소리를 올린다
+  function play() {
     const my = ++token;
     if (!ac) initAudio();
-    if (ac.state === 'suspended') await ac.resume();
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* 무음 모드에서도 들리게 (지원하는 곳만) */ }
+    if (ac.state === 'suspended') ac.resume();                                   // 기다리지 않는다 (기다리면 누른 순간이 지나간다)
+    const from = audio.currentTime;
+    vol.gain.cancelScheduledValues(ac.currentTime);
+    vol.gain.setValueAtTime(0, ac.currentTime);
+    const started = audio.play();
     if (!$('record-on').checked) { $('record-on').checked = true; sleeve.classList.add('with-record'); }
     mode = 'starting'; setButton(true); sleeve.classList.add('playing'); spin();
-    await wait(1000); if (my !== token) return;                                  // 톤암이 판 위로 들어와 바늘을 내리면
-    try { await audio.play(); } catch (e) { if (my === token) stop(); return; }
-    if (my === token) mode = 'playing';
+    Promise.all([started, wait(1000)]).then(() => {
+      if (my !== token) return;
+      audio.currentTime = from;
+      vol.gain.setTargetAtTime(1, ac.currentTime, 0.03);
+      mode = 'playing';
+    }, () => { if (my === token) stop(); });
   }
   function stop(ended) {
     ++token;
