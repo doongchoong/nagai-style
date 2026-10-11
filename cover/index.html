@@ -178,7 +178,7 @@ input[type=text]:focus-visible,select:focus-visible,button:focus-visible{outline
 
 <script src="/nagai-scene.min.js?v=1.4.1"></script>
 <script>
-const CONFIG = {"mood": "dusk", "music": {"src": "달궈진_정수리.mp3", "title": "달궈진 정수리", "artist": "Nagai Style", "beats": [1.42, 2.14, 2.9, 3.66, 4.28, 4.9, 5.66, 6.66, 7.4, 8.16, 8.78, 9.42, 10.16, 10.9, 11.52, 12.16, 12.9, 13.66, 14.42, 15.16, 15.78, 16.92, 17.54, 18.16, 18.9, 19.66, 20.26, 20.9, 21.66, 22.26, 22.9, 23.66, 24.26, 24.9, 25.66, 26.66, 27.26, 28.16, 28.9, 29.66, 30.26, 30.9, 31.66, 32.28, 32.9, 33.66, 34.66, 35.36, 36.04, 36.66, 37.32, 38.16, 38.9, 39.66, 40.36, 41.16, 42.16, 42.9, 43.66, 44.28, 44.9, 45.66, 46.66, 47.4, 48.42, 49.06, 49.66, 50.28, 50.9, 51.66, 52.28, 52.92, 53.66, 54.66, 55.34, 56.16, 56.78, 57.66, 58.66, 59.66, 60.5, 61.16, 62.16, 62.92, 63.66, 64.38, 64.98, 65.66, 66.66, 67.66, 68.26, 68.92, 69.66, 70.26, 71.16, 72.16, 72.92, 73.66, 74.66, 75.66, 76.66, 77.66, 78.66, 79.26, 79.92, 80.66, 81.4, 82.16, 82.92, 83.66, 84.26, 84.92, 85.66, 86.26, 86.92, 87.66, 88.66, 89.66, 90.66, 91.66, 92.26, 92.92, 93.66, 94.66, 95.26, 96.16, 96.92, 97.66, 98.66, 99.26, 100.16, 100.92, 101.66, 102.26, 102.92, 103.66, 104.26, 104.92, 105.66, 106.26, 106.9, 107.66, 108.26, 108.92, 109.66, 110.26, 110.92, 111.66, 112.26, 113.16, 114.16, 114.8, 115.4, 116.04, 116.66, 117.26, 117.92, 118.66, 119.42, 120.16, 121.16, 122.16, 122.92, 123.66, 124.26, 124.92, 125.66, 126.26, 126.92, 127.54, 128.44, 129.18, 129.92, 140.44, 142.16, 142.78, 143.66, 144.42, 145.04, 145.66, 146.28, 146.92, 147.66, 148.66, 149.66, 150.66, 151.42, 152.16, 152.78, 153.66, 154.68, 155.66, 156.38, 157.16, 158.16, 158.92, 159.68, 160.54, 161.16, 161.92, 162.68, 163.42, 164.16, 164.92, 165.68, 166.68, 167.42, 168.42, 169.18, 169.8, 170.68, 171.66, 172.38, 173.0, 173.68, 174.68, 175.42, 176.18]}, "title": "Summer Breeze", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 98273};
+const CONFIG = {"mood": "dusk", "music": {"src": "달궈진_정수리.mp3", "title": "달궈진 정수리", "artist": "Nagai Style"}, "title": "Dalguojin Jungsuri", "artist": "Nagai Style", "small": "STEREO", "font": "script", "pos": "tl", "seed": 22162};
 
 // 처음 장면: CONFIG.mood 가 있으면 그 분위기(day 오후 · dusk 해질녘 · evening 저녁)의 무작위 시드, 없으면 CONFIG.seed
 function startSeed() {
@@ -363,16 +363,13 @@ async function onSave() {
 $('save').addEventListener('click', onSave);
 $('quick-save').addEventListener('click', onSave);
 
-// ── 음악: LP 를 트는 것처럼 (CONFIG.music = { src, title, artist, beats })
+// ── 음악: LP 를 트는 것처럼 (CONFIG.music = { src, title, artist })
 //   커버 가운데 재생 버튼(또는 레코드)을 누르면 판이 돌기 시작하고 톤암이 들어와 바늘을 내린 뒤 음악이 나온다.
-//   beats(초 단위 박자 시간, scripts/music_beats.py 로 뽑음)마다 커버와 판이 살짝 들썩인다.
 //   음악은 브라우저가 직접 재생한다 (아이폰 Safari 는 Web Audio 로 음악을 돌리면 멈춰 버리는 문제가 있어 쓰지 않는다)
 if (CONFIG.music && CONFIG.music.src) setupRecordPlayer(CONFIG.music);
 
 function setupRecordPlayer(M) {
-  const sleeve = $('sleeve'), disc = $('disc'), vinyl = $('vinyl'), cover = document.querySelector('.cover'), btn = $('cover-play');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const beats = Array.isArray(M.beats) ? M.beats : [];
+  const sleeve = $('sleeve'), disc = $('disc'), vinyl = $('vinyl'), btn = $('cover-play');
   const ICON = {
     play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 4.8v14.4L19.5 12z"/></svg>',
     pause: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/></svg>',
@@ -383,14 +380,13 @@ function setupRecordPlayer(M) {
   const audio = new Audio();
   audio.preload = 'none';
   audio.src = M.src;
-  let mode = 'stopped', token = 0, bi = 0, unlocked = false;                    // mode: stopped | starting | playing
+  let mode = 'stopped', token = 0, unlocked = false;                    // mode: stopped | starting | playing
   const setButton = (on) => {
     btn.innerHTML = on ? ICON.pause : ICON.play;
     const label = (on ? '음악 멈춤' : '음악 재생') + (M.title ? ` — ${M.title}` : '');
     btn.setAttribute('aria-label', label); btn.title = label; btn.setAttribute('aria-pressed', String(on));
   };
   setButton(false);
-  const nextBeat = (t) => { let i = 0; while (i < beats.length && beats[i] < t) i++; return i; };
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // 휴대폰(특히 아이폰)은 누른 바로 그 순간에 play() 해 본 오디오만 나중에 틀 수 있게 허락한다. 그래서 누르자마자
@@ -409,11 +405,7 @@ function setupRecordPlayer(M) {
     mode = 'starting'; setButton(true); sleeve.classList.add('playing'); spin();
     wait(1000).then(() => {
       if (my !== token) return;
-      audio.play().then(() => {
-        if (my !== token) return;
-        bi = nextBeat(audio.currentTime);
-        mode = 'playing';
-      }, () => { if (my === token) stop(); });
+      audio.play().then(() => { if (my === token) mode = 'playing'; }, () => { if (my === token) stop(); });
     });
   }
   function stop(ended) {
@@ -434,8 +426,8 @@ function setupRecordPlayer(M) {
     navigator.mediaSession.setActionHandler('pause', () => stop());
   }
 
-  // 판 돌리기(33⅓ RPM, 켤 때·끌 때 서서히) + 박자에 들썩이기
-  let raf = 0, last = 0, angle = 0, speed = 0, bump = 0;
+  // 판 돌리기 (33⅓ RPM, 켤 때·끌 때 서서히)
+  let raf = 0, last = 0, angle = 0, speed = 0;
   const DEG = (100 / 3) * 6;
   function spin() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
   function frame(now) {
@@ -445,15 +437,7 @@ function setupRecordPlayer(M) {
     speed += ((on ? DEG : 0) - speed) * (1 - Math.exp(-dt / (on ? 0.35 : 0.7)));
     angle = (angle + speed * dt) % 360;
     vinyl.style.transform = `rotate(${angle.toFixed(2)}deg)`;
-    if (mode === 'playing' && !reduce) {
-      const t = audio.currentTime;
-      if (bi > 0 && beats[bi - 1] > t + 0.5) bi = nextBeat(t);                  // 뒤로 감긴 경우
-      while (bi < beats.length && beats[bi] <= t) { if (t - beats[bi] < 0.15) bump = 1; bi++; }
-    }
-    bump *= Math.exp(-dt / 0.11);
-    cover.style.scale = bump > 0.002 ? String(1 + bump * 0.012) : '';
-    disc.style.scale = bump > 0.002 ? String(1 + bump * 0.008) : '';
-    if (on || speed > 0.5 || bump > 0.002) raf = requestAnimationFrame(frame);
+    if (on || speed > 0.5) raf = requestAnimationFrame(frame);
   }
 }
 </script>
