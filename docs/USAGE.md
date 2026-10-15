@@ -68,7 +68,7 @@ python3 skills/nagai-motion/scripts/build_page.py config.json out.html
 
 ## Library
 
-`nagai-scene.js` (about 110 KB minified) draws everything: palms, sea and waves, bushes and other plants (cypress, agave and yucca, banana), cars, skylines, buildings, walls, pools, the composition tree, and the canvas with its controls. No dependencies.
+`nagai-scene.js` (about 110 KB minified) draws everything: palms, sea and waves, bushes and other plants (round trees, agave and yucca), cars, skylines, buildings, walls, pools, the composition tree, and the canvas with its controls. No dependencies.
 
 ```html
 <script src="https://cdn.jsdelivr.net/gh/doongchoong/nagai-style@main/skills/nagai-motion/assets/nagai-scene.min.js"></script>
