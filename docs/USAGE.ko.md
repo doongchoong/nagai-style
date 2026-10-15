@@ -68,7 +68,7 @@ python3 skills/nagai-motion/scripts/build_page.py config.json out.html
 
 ## 라이브러리
 
-`nagai-scene.js` (압축본 약 96 KB) 가 모든 것을 그립니다. 야자수, 바다와 파도, 덤불, 자동차, 빌딩숲, 건물, 담장, 수영장, 구도 결정트리, 캔버스와 컨트롤까지. 의존성은 없습니다.
+`nagai-scene.js` (압축본 약 110 KB) 가 모든 것을 그립니다. 야자수, 바다와 파도, 덤불과 여러 식물(사이프러스, 용설란·유카, 파초), 자동차, 빌딩숲, 건물, 담장, 수영장, 구도 결정트리, 캔버스와 컨트롤까지. 의존성은 없습니다.
 
 ```html
 <script src="https://cdn.jsdelivr.net/gh/doongchoong/nagai-style@main/skills/nagai-motion/assets/nagai-scene.min.js"></script>

@@ -1,4 +1,4 @@
-/*! nagai-scene.js v1.5.0 — 나가이 히로시 스타일 모션그래픽 (Canvas 2D, 의존성 없음)
+/*! nagai-scene.js v1.6.0 — 나가이 히로시 스타일 모션그래픽 (Canvas 2D, 의존성 없음)
  *
  * 블로그·웹페이지에 넣기
  *   <canvas id="art"></canvas>
@@ -15,7 +15,9 @@
  * 사진 저장: 컨트롤 "사진 저장" 또는 api.savePNG() — 가로 2400×1600, 모바일 1440×2560 PNG
  * 야자수: 기본은 가볍게(잎 도장), palmDetail:true 또는 컨트롤 "야자수 → 잎마다" 로 정밀하게 (휘고 떨림)
  *
- * 구성: 공통 유틸 · 야자수 · 바다 · 덤불 · 자동차 · 빌딩숲 · 건물 · 담장 · 수영장 · 구도(composer) · mount
+ * 식물: 야자수, 꽃 덤불(꽃 색은 장면마다 분홍·빨강·흰색·노랑·보라), 사이프러스, 용설란·유카, 파초(바람에 흔들림), 수영장 가 화분
+ *
+ * 구성: 공통 유틸 · 야자수 · 바다 · 덤불 · 다른 식물 · 자동차 · 빌딩숲 · 건물 · 담장 · 수영장 · 구도(composer) · mount
  */
 (function (global) {
 'use strict';
@@ -1125,6 +1127,385 @@ function drawBush(ctx, bush, x, y) {
   }
   ctx.fill();
 
+  ctx.restore();
+}
+
+/* plants.js — 야자수·덤불 말고 다른 식물: 사이프러스, 용설란·유카, 파초(바나나 잎), 화분 (Canvas 2D)
+ * 의존: nagai-util.js, bush.js (덤불 꽃 색)
+ *
+ * 사용법
+ *   const c = createCypress({ seed, height: 320 });          drawCypress(ctx, c, x, groundY)
+ *   const a = createAgave({ seed, size: 120 });              drawAgave(ctx, a, x, groundY)       // 용설란
+ *   const y = createAgave({ seed, size: 80, stems: 2 });     drawAgave(ctx, y, x, groundY)       // 유카: 줄기 위에 잎 뭉치
+ *   const b = createBanana({ seed, height: 260 });           drawBanana(ctx, b, x, groundY, { time, wind })   // 바람에 흔들린다
+ *   화분에 심기: create…({ pot: { w: 60, h: 50 } })
+ *   하늘별 색: create…({ tone: 'day' | 'dusk' | 'night' })
+ *
+ * 화풍
+ *   사이프러스: 덤불처럼 거의 검은 녹색 불꽃 실루엣을 먼저 깔고, 빛 쪽에 세로로 긴 잎 점을 띄엄띄엄
+ *   용설란·유카·파초: 잎마다 가운데 잎맥을 따라 접힌 두 면 → 빛 쪽 면은 밝게, 반대쪽은 어둡게 (단계 음영)
+ *   파초 잎은 가장자리에서 잎맥 쪽으로 찢어진 틈(V 홈)이 몇 개씩 있다
+ */
+
+const PLANT_BASE = {
+  cypress: { mass: '#07150d', leaves: ['#123d26', '#1c5532', '#2b7042', '#4c935c'], trunk: '#4a3322' },
+  agave: { leaves: ['#1f4a50', '#33696d', '#56928a', '#96c6b1'], edge: '#e3d47e' },
+  yucca: { leaves: ['#113c24', '#1d5730', '#367c3e', '#68a754'], edge: '#c9d98a', trunk: '#8a6a48', trunkShade: '#4a3424', dead: '#8a7148' },
+  banana: { leaves: ['#164826', '#276832', '#4c983e', '#86c35f'], rib: '#d4eaa6', stem: '#5c8a3c', stemShade: '#2f5222' },
+  pot: { body: '#c8643c', light: '#e3895a', dark: '#8a3c22', rim: '#dc7a4e' },
+  potWhite: { body: '#e6ded2', light: '#faf6f0', dark: '#b4a898', rim: '#f2ece2' },
+};
+// 분홍 해질녘은 한 단계, 연보라 저녁은 거의 실루엣까지 가라앉힌다 (덤불과 같은 정도)
+const PLANT_TONE = { day: null, dusk: ['#06110a', 0.42], night: ['#05080c', 0.74] };
+function plantPalette(name, tone = 'day') {
+  const base = PLANT_BASE[name], t = PLANT_TONE[tone];
+  if (!t) return base;
+  const dim = (c) => (Array.isArray(c) ? c.map(dim) : mixColor(c, t[0], name.startsWith('pot') ? t[1] * 0.8 : t[1]));
+  const out = {};
+  for (const k in base) out[k] = dim(base[k]);
+  return out;
+}
+
+// 덤불 꽃 색: 장면마다 한 가지 (부겐빌레아 분홍이 가장 흔하다)
+const FLOWER_SETS = {
+  pink: null,
+  red: { flowers: ['#a8202c', '#d8423a', '#f2785a'], flowerHighlight: '#ffe2d2' },        // 히비스커스
+  white: { flowers: ['#b9b8cc', '#e2e0ec', '#fbfaff'], flowerHighlight: '#ffffff' },      // 협죽도·치자
+  yellow: { flowers: ['#c0861a', '#e4b22e', '#f4d65c'], flowerHighlight: '#fff6d2' },     // 알라만다
+  purple: { flowers: ['#6e3296', '#9256bc', '#bc86de'], flowerHighlight: '#f2e4ff' },     // 보라 부겐빌레아
+};
+function bushPaletteFor(tone, flowerSet) {
+  const base = tone === 'night' ? BUSH_NIGHT : tone === 'dusk' ? BUSH_DUSK : BUSH_PALETTE;
+  const f = FLOWER_SETS[flowerSet];
+  if (!f) return tone === 'day' ? undefined : base;
+  const t = PLANT_TONE[tone];
+  const dim = (c) => (t ? mixColor(c, '#2a0e22', t[1] * 0.75) : c);
+  return { ...base, flowers: f.flowers.map(dim), flowerHighlight: dim(f.flowerHighlight) };
+}
+
+/* ───────── 화분 ───────── */
+
+// (0,0) = 화분 밑 가운데. 위로 좁아지지 않고 넓어지는 토분 + 테두리 띠. 빛 쪽 절반이 밝다
+function drawPot(ctx, pot, light) {
+  const P = pot.palette, w = pot.w, h = pot.h, rimH = h * 0.2, bw = w * 0.74;
+  const so = shadowOffset(h * 0.8);
+  ctx.fillStyle = SHADOW_COLOR;
+  ctx.beginPath();
+  ctx.ellipse(so.dx * 0.5, 1, w * 0.5 + Math.abs(so.dx) * 0.5, Math.max(2, w * 0.06 + so.dy * 0.5), 0, 0, Math.PI * 2);
+  ctx.fill();
+  const lit = light.x < 0 ? -1 : 1;
+  const half = (side, color) => fillPoly(ctx, [
+    { x: 0, y: 0 }, { x: side * bw / 2, y: 0 }, { x: side * w * 0.47, y: -(h - rimH) }, { x: 0, y: -(h - rimH) },
+  ], color);
+  half(lit, P.light); half(-lit, P.body);
+  fillPoly(ctx, [{ x: -lit * w * 0.47, y: -(h - rimH) }, { x: -lit * bw / 2, y: 0 }, { x: -lit * bw * 0.36, y: 0 }, { x: -lit * w * 0.33, y: -(h - rimH) }], P.dark);
+  ctx.fillStyle = P.rim; ctx.fillRect(-w / 2, -h, w, rimH);
+  ctx.fillStyle = P.dark; ctx.fillRect(lit > 0 ? -w / 2 : w / 2 - w * 0.16, -h, w * 0.16, rimH);
+  ctx.fillStyle = P.light; ctx.fillRect(-w / 2, -h, w, Math.max(1, rimH * 0.22));
+}
+function createPotOpt(opts, rnd) {
+  if (!opts.pot) return null;
+  return { w: opts.pot.w ?? 60, h: opts.pot.h ?? 50, palette: plantPalette(opts.pot.white ?? rnd() < 0.35 ? 'potWhite' : 'pot', opts.tone) };
+}
+
+/* ───────── 사이프러스 (원뿔형 측백) ───────── */
+
+function createCypress(opts = {}) {
+  const rnd = mulberry32(opts.seed ?? 3);
+  const height = opts.height ?? 320, width = opts.width ?? height * 0.24, hw = width / 2;
+  const trunkH = height * 0.035, crown = height - trunkH;
+  const dot = Math.max(1.3, width / 34);
+  // 아래 1/4 쯤이 가장 넓고 끝으로 뾰족해지는 불꽃 모양. 나무마다 조금씩 다르게
+  const fat = lerp(0.8, 1.2, rnd()), widest = lerp(0.18, 0.3, rnd());
+  const prof = (t) => hw * (t < widest ? lerp(0.62, 1, Math.sin((t / widest) * Math.PI / 2)) : Math.pow(Math.max(0, (1 - t) / (1 - widest)), 0.8 * fat));
+  const yAt = (t) => -trunkH - t * crown;
+  const outline = [];
+  for (let i = 0; i <= 28; i++) { const t = i / 28; outline.push({ x: -prof(t) * 0.94, y: yAt(t) }); }
+  for (let i = 28; i >= 0; i--) { const t = i / 28; outline.push({ x: prof(t) * 0.94, y: yAt(t) }); }
+  // 가장자리 울퉁불퉁: 양쪽으로 번갈아 둥근 덩어리
+  const blobs = [];
+  const n = Math.max(8, Math.round(crown / (width * 0.32)));
+  for (let i = 0; i < n; i++) {
+    const t = (i + lerp(0.2, 0.8, rnd())) / n, w = prof(t);
+    const r = Math.max(dot * 2, w * lerp(0.42, 0.62, rnd()));
+    blobs.push({ x: (i % 2 ? 1 : -1) * Math.max(0, w - r * 0.85), y: yAt(t), r });
+  }
+  const leaves = [];
+  const count = opts.leaves ?? Math.round(width * crown * 0.045);
+  for (let i = 0; i < count; i++) {
+    const t = Math.pow(rnd(), 1.15), w = prof(t) * 1.06;
+    const x = (rnd() * 2 - 1) * w;
+    leaves.push({ x, y: yAt(t), r: dot * lerp(0.8, 1.5, rnd()), nx: w > 0 ? x / w : 0, ny: 1 - 2 * t, keep: rnd(), toneR: rnd() });
+  }
+  return { height, width, trunkH, outline, blobs, leaves, palette: opts.palette ?? plantPalette('cypress', opts.tone) };
+}
+
+function drawCypress(ctx, c, x, y) {
+  const P = c.palette, light = lightVector();
+  ctx.save();
+  ctx.translate(x, y);
+  // 그림자: 밑동 + 실루엣을 땅에 눕힌 모양
+  const pts = [{ x: -c.width * 0.35, y: 0 }, { x: c.width * 0.35, y: 0 }];
+  for (const p of c.outline) { const o = shadowOffset(-p.y); pts.push({ x: p.x + o.dx, y: o.dy }); }
+  fillPoly(ctx, convexHull(pts), SHADOW_COLOR);
+  ctx.fillStyle = P.trunk;
+  ctx.fillRect(-c.width * 0.05, -c.trunkH - 2, c.width * 0.1, c.trunkH + 2);
+  // 어두운 덩어리
+  fillPoly(ctx, c.outline, P.mass);
+  ctx.beginPath();
+  for (const b of c.blobs) { ctx.moveTo(b.x + b.r, b.y); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); }
+  ctx.fill();
+  // 잎: 세로로 긴 점. 빛 쪽 위는 촘촘하고 밝게
+  for (const l of c.leaves) {
+    const lit = clamp01(0.5 + 0.55 * l.nx * light.x + 0.35 * l.ny * light.y);
+    l.tone = l.keep > lerp(0.05, 0.8, lit) ? -1 : Math.min(3, Math.floor(clamp01(lit * 0.75 + l.toneR * 0.25) * 4));
+  }
+  P.leaves.forEach((col, k) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    for (const l of c.leaves) {
+      if (l.tone !== k) continue;
+      ctx.moveTo(l.x + l.r * 0.7, l.y);
+      ctx.ellipse(l.x, l.y, l.r * 0.7, l.r * 1.5, 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+/* ───────── 용설란 · 유카 ───────── */
+
+// 잎 하나: 땅과 이루는 각(el), 둘레 방향(az) → 화면에서는 앞쪽(az>0) 잎일수록 아래로 처져 보인다
+function agaveLeaf(rnd, size, el, az, narrow, droop) {
+  const ce = Math.cos(el);
+  const d = { x: ce * Math.cos(az), y: -Math.sin(el) + ce * Math.sin(az) * 0.32 };
+  const m = Math.hypot(d.x, d.y) || 1;
+  const len = size * lerp(0.75, 1, rnd()) * (1 - 0.22 * Math.max(0, el) / 1.5) * Math.max(0.55, m);
+  return {
+    dx: d.x / m, dy: d.y / m, len, z: ce * Math.sin(az), el,
+    w: len * (narrow ? lerp(0.06, 0.08, rnd()) : lerp(0.13, 0.17, rnd())),
+    droop: len * droop * ce * lerp(0.6, 1.2, rnd()),
+  };
+}
+
+function createAgave(opts = {}) {
+  const rnd = mulberry32(opts.seed ?? 11);
+  const size = opts.size ?? 120, stems = opts.stems ?? 0, yucca = stems > 0;
+  const pot = createPotOpt(opts, rnd);
+  const heads = [];
+  if (!yucca) heads.push({ x: 0, y: 0, size });
+  for (let i = 0; i < stems; i++) {
+    // 유카: 굵고 짧은 줄기 끝마다 큼직한 뾰족 잎 뭉치 (야자수처럼 가늘고 길지 않게)
+    const lean = (i - (stems - 1) / 2) * lerp(0.3, 0.5, rnd()) + (rnd() - 0.5) * 0.2;
+    const h = size * lerp(0.8, 1.5, rnd()) * (i === Math.floor(stems / 2) ? 1.2 : 1);
+    heads.push({ x: Math.sin(lean) * h, y: -Math.cos(lean) * h, size: size * lerp(0.8, 1, rnd()), stemW: size * lerp(0.14, 0.18, rnd()) });
+  }
+  for (const hd of heads) {
+    const leaves = [];
+    if (yucca) {
+      const n = 26 + Math.floor(rnd() * 10);
+      for (let i = 0; i < n; i++) leaves.push(agaveLeaf(rnd, hd.size, lerp(-0.25, 1.5, Math.pow(rnd(), 0.7)), rnd() * Math.PI * 2, true, 0.06));
+      // 잎 뭉치 바로 아래 짧게 처진 마른 잎
+      hd.dead = Array.from({ length: 7 + Math.floor(rnd() * 5) }, () => ({ a: lerp(-1, 1, rnd()), len: hd.size * lerp(0.18, 0.32, rnd()) }));
+    } else {
+      // 바깥 고리는 거의 눕고, 안쪽으로 갈수록 선다
+      const rings = [[9, 10, 0.1, 0.32], [7, 8, 0.48, 0.7], [4, 5, 0.85, 1.12], [2, 3, 1.25, 1.45]];
+      for (const [a, b, e0, e1] of rings) {
+        const n = a + Math.floor(rnd() * (b - a + 1)), off = rnd() * Math.PI * 2;
+        for (let i = 0; i < n; i++) leaves.push(agaveLeaf(rnd, size, lerp(e0, e1, rnd()), off + (i + (rnd() - 0.5) * 0.5) / n * Math.PI * 2, false, 0.08));
+      }
+    }
+    leaves.sort((a, b) => a.z - b.z);       // 뒤쪽 잎부터
+    hd.leaves = leaves;
+    hd.edged = !yucca && rnd() < 0.45;      // 노란 테두리 용설란
+  }
+  heads.sort((a, b) => a.y - b.y);
+  return { size, yucca, heads, pot, palette: opts.palette ?? plantPalette(yucca ? 'yucca' : 'agave', opts.tone) };
+}
+
+// 가운데 잎맥 + 양쪽 가장자리 (s = 0 밑동 → 1 끝)
+function leafHalves(bx, by, dx, dy, len, w, droop, prof, segs, notches) {
+  const tx = bx + dx * len, ty = by + dy * len + droop;
+  const cx = bx + dx * len * 0.6, cy = by + dy * len * 0.6;
+  const mid = [], L = [], R = [];
+  for (let i = 0; i <= segs; i++) {
+    const s = i / segs, u = 1 - s;
+    const px = u * u * bx + 2 * u * s * cx + s * s * tx, py = u * u * by + 2 * u * s * cy + s * s * ty;
+    const gx = 2 * u * (cx - bx) + 2 * s * (tx - cx), gy = 2 * u * (cy - by) + 2 * s * (ty - cy);
+    const gm = Math.hypot(gx, gy) || 1, nx = -gy / gm, ny = gx / gm, ww = w * prof(s);
+    mid.push({ x: px, y: py, nx, ny, w: ww });
+  }
+  const edge = (side, out) => {
+    mid.forEach((p, i) => {
+      out.push({ x: p.x + p.nx * p.w * side, y: p.y + p.ny * p.w * side });
+      const cut = notches && notches[side > 0 ? 0 : 1].find((n) => n.i === i);
+      if (cut && i < mid.length - 1) {                        // 찢어진 틈: 가장자리에서 잎맥 가까이까지 V 홈
+        const q = mid[i + 1], k = 0.5;
+        const mx = lerp(p.x, q.x, k), my = lerp(p.y, q.y, k), mw = lerp(p.w, q.w, k), mnx = lerp(p.nx, q.nx, k), mny = lerp(p.ny, q.ny, k);
+        out.push({ x: mx + mnx * mw * side * cut.depth, y: my + mny * mw * side * cut.depth });
+      }
+    });
+  };
+  edge(1, L); edge(-1, R);
+  return { mid, L, R };
+}
+
+function drawAgave(ctx, ag, x, y) {
+  const P = ag.palette, light = lightVector();
+  ctx.save();
+  ctx.translate(x, y);
+  if (ag.pot) { drawPot(ctx, ag.pot, light); ctx.translate(0, -ag.pot.h * 0.92); }
+  // 그림자
+  ctx.fillStyle = SHADOW_COLOR;
+  if (!ag.pot) {
+    for (const hd of ag.heads) {
+      const o = shadowOffset(-hd.y + hd.size * 0.3);
+      ctx.beginPath();
+      ctx.ellipse(hd.x + o.dx * 0.6, o.dy * 0.6 + 1, hd.size * 0.85 + Math.abs(o.dx) * 0.25, Math.max(3, hd.size * 0.16), 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (hd.stemW) {
+        ctx.strokeStyle = SHADOW_COLOR; ctx.lineWidth = hd.stemW; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(hd.x + o.dx * 0.6, o.dy * 0.6); ctx.stroke();
+      }
+    }
+  }
+  // 유카 줄기: 빛 쪽 절반 밝게
+  const ls = light.x < 0 ? -1 : 1;
+  for (const hd of ag.heads) {
+    if (!hd.stemW) continue;
+    const m = Math.hypot(hd.x, hd.y), nx = -hd.y / m, ny = hd.x / m, w0 = hd.stemW * 0.75, w1 = hd.stemW * 0.5;
+    const side = (s, col) => fillPoly(ctx, [{ x: 0, y: 0 }, { x: nx * w0 * s, y: ny * w0 * s }, { x: hd.x + nx * w1 * s, y: hd.y + ny * w1 * s }, { x: hd.x, y: hd.y }], col);
+    side(-ls, P.trunkShade); side(ls, P.trunk);
+  }
+  for (const hd of ag.heads) {
+    ctx.save();
+    ctx.translate(hd.x, hd.y);
+    if (hd.dead) {
+      ctx.strokeStyle = P.dead; ctx.lineCap = 'round';
+      for (const d of hd.dead) {
+        ctx.lineWidth = hd.size * 0.05;
+        ctx.beginPath(); ctx.moveTo(0, -hd.size * 0.05);
+        ctx.quadraticCurveTo(Math.sin(d.a) * d.len * 0.6, d.len * 0.1, Math.sin(d.a) * d.len * 0.7, d.len);
+        ctx.stroke();
+      }
+    }
+    const prof = ag.yucca ? (s) => Math.min(1, 0.55 + s * 2) * Math.pow(1 - s, 0.6) : (s) => (s < 0.18 ? lerp(0.75, 1, s / 0.18) : Math.pow((1 - s) / 0.82, 0.85));
+    for (const lf of hd.leaves) {
+      const h = leafHalves(0, 0, lf.dx, lf.dy, lf.len, lf.w, lf.droop, prof, 6, null);
+      const back = lf.z < -0.3 ? 1 : 0;
+      const lay = 0.18 * (1 - Math.max(0, lf.el) / 1.5);     // 누운 잎일수록 윗면이 하늘을 본다
+      const half = (pts, sgn) => {
+        const p = h.mid[3];
+        const lit = clamp01(0.45 + 0.5 * sgn * (p.nx * light.x + p.ny * light.y) + lay);
+        const k = Math.max(0, Math.min(3, Math.floor(lit * 3.99) - back));
+        fillPoly(ctx, [...pts, ...h.mid.slice().reverse()], P.leaves[k]);
+      };
+      half(h.L, 1); half(h.R, -1);
+      if (hd.edged || ag.yucca) {
+        ctx.strokeStyle = P.edge; ctx.lineWidth = Math.max(0.6, lf.w * (ag.yucca ? 0.12 : 0.14)); ctx.lineJoin = 'round';
+        if (ag.yucca) ctx.globalAlpha = 0.5;
+        for (const e of [h.L, h.R]) { ctx.beginPath(); e.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke(); }
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+/* ───────── 파초 (바나나 잎) ───────── */
+
+function createBanana(opts = {}) {
+  const rnd = mulberry32(opts.seed ?? 17);
+  const height = opts.height ?? 260;
+  const pot = createPotOpt(opts, rnd);
+  const stems = Array.from({ length: rnd() < 0.55 ? 1 : 2 }, (_, i) => ({
+    x: (i ? 1 : -1) * height * lerp(0.02, 0.08, rnd()), h: height * lerp(0.22, 0.36, rnd()) * (i ? 0.75 : 1), w: height * lerp(0.05, 0.065, rnd()),
+  }));
+  const leaves = [];
+  const n = 5 + Math.floor(rnd() * 3);
+  for (let i = 0; i < n; i++) {
+    const st = stems[i % stems.length];
+    const a = lerp(-1.35, 1.35, (i + lerp(0.2, 0.8, rnd())) / n);        // 세로에서 벌어진 각
+    const young = Math.abs(a) < 0.3 && rnd() < 0.5;                     // 가운데 새잎: 좁고 곧게 선다
+    const bl = height * lerp(0.42, 0.58, rnd()) * (young ? 0.8 : 1);
+    const notches = [0, 1].map(() => {
+      const out = [], k = young ? 0 : Math.floor(rnd() * 4);
+      for (let j = 0; j < k; j++) out.push({ i: 2 + Math.floor(rnd() * 8), depth: lerp(0.08, 0.3, rnd()) });
+      return out;
+    });
+    leaves.push({
+      st, a, young, bl, bw: bl * (young ? 0.12 : lerp(0.15, 0.19, rnd())), pl: height * lerp(0.1, 0.18, rnd()),
+      droop: bl * (young ? 0.05 : lerp(0.15, 0.32, rnd()) + 0.4 * Math.abs(Math.sin(a))),
+      z: rnd() * 2 - 1, notches, phase: rnd() * 10, stiff: lerp(0.7, 1.1, rnd()),
+    });
+  }
+  leaves.sort((p, q) => p.z - q.z);
+  return { height, stems, leaves, pot, palette: opts.palette ?? plantPalette('banana', opts.tone) };
+}
+
+const BANANA_PROF = (s) => Math.pow(Math.sin(Math.PI * Math.min(1, 0.06 + s * 0.94)), 0.55);
+function bananaGeometry(b, wind, time) {
+  return b.leaves.map((lf) => {
+    const sway = wind * 0.13 * lf.stiff * (1 + 0.35 * Math.sin(time * 1.7 + lf.phase)) + 0.02 * Math.sin(time * 0.9 + lf.phase * 2);
+    const a = lf.a + sway, dx = Math.sin(a), dy = -Math.cos(a);
+    const sx = lf.st.x, sy = -lf.st.h;
+    const bx = sx + dx * lf.pl, by = sy + dy * lf.pl * 0.9;
+    const h = leafHalves(bx, by, dx, dy, lf.bl, lf.bw, lf.droop * (1 + 0.15 * Math.abs(sway) * 4), BANANA_PROF, 12, lf.notches);
+    return { lf, sx, sy, bx, by, h };
+  });
+}
+
+function drawBananaShadow(ctx, b, x, y, opts = {}) {
+  const g = bananaGeometry(b, opts.wind ?? 0, opts.time ?? 0);
+  const lift = b.pot ? b.pot.h : 0;
+  const proj = (p) => { const o = shadowOffset(lift - p.y); return { x: p.x + o.dx, y: o.dy }; };
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.strokeStyle = SHADOW_COLOR; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (!b.pot) for (const st of b.stems) {
+    const a = proj({ x: st.x, y: 0 }), c = proj({ x: st.x, y: -st.h });
+    ctx.lineWidth = st.w; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+  }
+  for (const { lf, h } of g) {
+    ctx.lineWidth = lf.bw * 0.55;
+    ctx.beginPath();
+    h.mid.forEach((p, i) => { const q = proj(p); i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); });
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawBanana(ctx, b, x, y, opts = {}) {
+  const P = b.palette, light = lightVector();
+  const g = bananaGeometry(b, opts.wind ?? 0, opts.time ?? 0);
+  ctx.save();
+  ctx.translate(x, y);
+  if (b.pot) { drawPot(ctx, b.pot, light); ctx.translate(0, -b.pot.h * 0.92); }
+  const ls = light.x < 0 ? -1 : 1;
+  for (const st of b.stems) {
+    const half = (s, col) => fillPoly(ctx, [{ x: st.x, y: 0 }, { x: st.x + s * st.w / 2, y: 0 }, { x: st.x + s * st.w * 0.32, y: -st.h }, { x: st.x, y: -st.h }], col);
+    half(-ls, P.stemShade); half(ls, P.stem);
+  }
+  ctx.lineCap = 'round';
+  for (const { lf, sx, sy, bx, by, h } of g) {
+    // 잎자루
+    ctx.strokeStyle = P.stemShade; ctx.lineWidth = Math.max(1, lf.bw * 0.09);
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(bx, by); ctx.stroke();
+    const back = lf.z < -0.35 ? 1 : 0;
+    const half = (pts, sgn) => {
+      const p = h.mid[5];
+      const lit = clamp01(0.5 + 0.55 * sgn * (p.nx * light.x + p.ny * light.y) + (lf.young ? 0.1 : 0));
+      const k = Math.max(0, Math.min(3, Math.floor(lit * 3.99) - back));
+      fillPoly(ctx, [...pts, ...h.mid.slice().reverse()], P.leaves[k]);
+    };
+    half(h.L, 1); half(h.R, -1);
+    // 잎맥: 빛 받는 잎만 밝은 선
+    ctx.strokeStyle = back ? P.leaves[1] : P.rib; ctx.lineWidth = Math.max(0.7, lf.bw * 0.06);
+    ctx.beginPath();
+    h.mid.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -2690,7 +3071,7 @@ function drawPoolRim(ctx, pool, rim, ix1, iz0, iz1, gy, drop) {
 }
 
 /* composer.js — 결정트리로 구도를 정하고, 시드에 따라 위치를 흔들어 장면 명세를 만든다
- * 의존: nagai-util.js 와 모든 객체 모듈 (palm, sea, bush, car, skyline, house, wall, pool)
+ * 의존: nagai-util.js 와 모든 객체 모듈 (palm, sea, bush, plants, car, skyline, house, wall, pool)
  *
  * 사용법
  *   const spec = composeScene(1234);                 // 구도 + 위치 (시드 하나로 재현)
@@ -2894,6 +3275,15 @@ function composeScene(seed, opts = {}) {
   // 바닥 y 에서의 크기 배율: 수평선 0 → 화면 맨 아래 1 (땅 위 원근)
   const sAt = (y) => Math.max(0.05, (y - horizonY) / (H - horizonY));
   const childSeed = () => Math.floor(rp() * 1e9);
+  // 덤불 말고 다른 식물(사이프러스·용설란·유카·파초)과 꽃 색은 따로 굴린 난수로 → 예전 시드의 다른 배치는 그대로
+  //   rqt = 무슨 식물인지 (시드를 따른다), rqp = 위치·크기 (같은 구도의 변주를 따른다)
+  const rqt = mulberry32(hashSeed(seed) ^ 0x2545f491);
+  const rqp = mulberry32(hashSeed(opts.jitter ?? seed * 7919 + 13) ^ 0x2545f491);
+  const Q = (a, b) => lerp(a, b, rqp());
+  const plantTone = choice.sky === 'violet' ? 'night' : choice.sky === 'dusk' ? 'dusk' : 'day';
+  const flowerSet = pickWeighted(rqt, [['pink', 5], ['red', 2], ['white', 1], ['yellow', 1], ['purple', 1]]);   // 장면 하나에 꽃 색 한 가지
+  const bushPalette = bushPaletteFor(plantTone, flowerSet);
+  const awayQ = (a, b) => (focalX < W / 2 ? W * Q(1 - b, 1 - a) : W * Q(a, b));
 
   // ── 하늘·원경
   add('sky', 'back', 0, { colors: SKY_COLORS[choice.sky], horizonY });
@@ -2956,7 +3346,7 @@ function composeScene(seed, opts = {}) {
     const hy = horizonY + (H - horizonY) * J(0.08, 0.12), s = sAt(hy) * 1.4;
     for (let x = J(-60, -10); x < W + 60;) {
       const w = J(500, 700) * s;
-      add('bush', 'stand', hy + J(-3, 3), { seed: childSeed(), x, width: w, height: w * J(0.55, 0.7), flowers: rp() < 0.4 ? undefined : 0, palette: choice.sky === 'violet' ? BUSH_NIGHT : choice.sky === 'dusk' ? BUSH_DUSK : undefined });
+      add('bush', 'stand', hy + J(-3, 3), { seed: childSeed(), x, width: w, height: w * J(0.55, 0.7), flowers: rp() < 0.4 ? undefined : 0, palette: bushPalette });
       x += w * J(0.55, 0.8);
     }
   }
@@ -2991,10 +3381,26 @@ function composeScene(seed, opts = {}) {
       }
     }
   };
-  const bushPalette = choice.sky === 'violet' ? BUSH_NIGHT : choice.sky === 'dusk' ? BUSH_DUSK : undefined;
+  // 식물 하나 (덤불 자리에 덤불 대신 들어가기도 한다). w = 덤불이었다면 폭
+  const plantAt = (kind, x, y, w, extra = {}) => {
+    const seed = Math.floor(rqp() * 1e9);
+    if (kind === 'banana') add('banana', 'stand', y, { seed, x, height: w * Q(0.8, 1), tone: plantTone, ...extra });
+    else if (kind === 'agave') {
+      const stems = rqt() < 0.35 ? 1 + Math.floor(rqt() * 3) : 0;                  // 셋 중 하나쯤은 유카
+      const size = w * (stems ? Q(0.26, 0.32) : Q(0.3, 0.38));
+      add('agave', 'stand', y, { seed, x, size, stems, tone: plantTone, ...extra });
+      if (!stems && !extra.pot && rqt() < 0.5) add('agave', 'stand', y + 2, { seed: seed ^ 0x5bd1, x: x + (rqt() < 0.5 ? -1 : 1) * size * Q(0.9, 1.3), size: size * Q(0.5, 0.7), tone: plantTone });
+    } else if (kind === 'cypress') {
+      const n = rqt() < 0.5 ? 2 : 1, h = w * Q(1.5, 2.1), cw = h * Q(0.2, 0.25);
+      for (let i = 0; i < n; i++) add('cypress', 'stand', y - i * 3, { seed: seed + i, x: x + (i - (n - 1) / 2) * cw * Q(0.8, 1), height: h * (i ? Q(0.85, 1) : 1), width: cw, tone: plantTone });
+    }
+  };
+  // 덤불 자리: 대개 덤불이고, 가끔 파초·용설란(유카)·사이프러스가 대신 선다 (전경 귀퉁이에는 사이프러스 없음)
   const bushAt = (x, y, big = 1) => {
-    const s = sAt(y);
-    add('bush', 'stand', y, { seed: childSeed(), x, width: J(280, 420) * s * big, height: J(170, 250) * s * big, flowers: rp() < 0.35 ? 0 : undefined, palette: bushPalette });
+    const s = sAt(y), seed = childSeed(), width = J(280, 420) * s * big, height = J(170, 250) * s * big, flowers = rp() < 0.35 ? 0 : undefined;
+    const kind = pickWeighted(rqt, big >= 1 ? [['bush', 5], ['banana', 3], ['agave', 2]] : [['bush', 5], ['banana', 2], ['agave', 2], ['cypress', 2]]);
+    if (kind === 'bush') add('bush', 'stand', y, { seed, x, width, height, flowers, palette: bushPalette });
+    else plantAt(kind, x, y, kind === 'cypress' ? width * 1.5 : width);
   };
   const carAt = (x, y) => {
     const s = sAt(y), t = pickWeighted(rp, [[{ body: 'coupe', roof: 'white' }, 2], [{ body: 'coupe', roof: 'open' }, 2], [{ body: 'sedan', roof: 'white' }, 2], [{ body: 'sedan', roof: 'body' }, 1]]);
@@ -3010,6 +3416,8 @@ function composeScene(seed, opts = {}) {
       carAt(cx + J(-40, 40), H * J(0.86, 0.92));
     }
     if (rt() < 0.7) bushAt(awayFromFocal(0.02, 0.12), H * J(0.93, 1.0), 1.2);
+    // 모래밭에 용설란·유카 한 무리
+    if (rqt() < 0.55) { const y = landTop + (H - landTop) * Q(0.35, 0.55); plantAt('agave', awayQ(0.04, 0.2), y, 360 * sAt(y)); }
   }
 
   if (theme === 'resort' || theme === 'poolside') {
@@ -3032,6 +3440,13 @@ function composeScene(seed, opts = {}) {
     });
     placePalms(choice.palms, [W * 0.05, W * 0.95], [houseBase - J(25, 40), houseBase - J(2, 12)], spans);
     for (const sp of spans) if (rp() < 0.8) bushAt(rp() < 0.5 ? sp[0] - J(10, 40) * s : sp[1] + J(10, 40) * s, houseBase + J(6, 18), 0.6);
+    // 건물 옆에 사이프러스, 또는 처마 밑에 파초
+    for (const sp of spans) {
+      // 사이프러스는 건물 앞면보다 살짝 앞에 (뒤에 두면 옆면에 가려진다), 건물보다 키가 크다
+      const r = rqt(), left = rqt() < 0.5;
+      if (r < 0.35) plantAt('cypress', left ? sp[0] - Q(50, 110) * s : sp[1] + Q(50, 110) * s, houseBase + Q(2, 5), 520 * s);
+      else if (r < 0.55) plantAt('banana', left ? sp[0] + Q(40, 110) * s : sp[1] - Q(40, 110) * s, houseBase + Q(2, 8), 420 * s);
+    }
 
     const fgY = houseBase + (H - houseBase) * J(0.28, 0.4);
     if (choice.foreground === 'pool') {
@@ -3060,6 +3475,14 @@ function composeScene(seed, opts = {}) {
           add('lounger', 'stand', P(xc, z0).y, { xc, gy: pgy, z0, toPool, tone: choice.sky === 'violet' ? 'night' : choice.sky === 'dusk' ? 'dusk' : 'day' });
         }
       }
+      // 옆 갑판 안쪽 귀퉁이에 화분 하나 (파초 또는 용설란)
+      if (rqt() < 0.6) {
+        const dist = spec.view.dist, z = pd * Q(0.78, 0.9), f = dist / (dist + z);
+        const xw = loungeRight ? px + pw + m + side * Q(0.55, 0.8) : px - m - side * Q(0.55, 0.8);
+        const pt = { x: spec.view.vpX + (xw - spec.view.vpX) * f, y: horizonY + (pgy - horizonY) * f };
+        const pot = { w: 46 * f, h: 40 * f };
+        plantAt(rqt() < 0.6 ? 'banana' : 'agave', pt.x, pt.y, 210 * f, { pot });
+      }
       if (rt() < 0.6) add('wall', 'stand', fgY, { seed: childSeed(), x: px + pw + J(30, 80), groundY: fgY, length: W, height: 70 * sAt(fgY), dir: 'x' });
       if (theme === 'poolside' && rt() < 0.7) add('wall', 'stand', fgY, { seed: childSeed(), x: -W * 0.3, groundY: fgY, length: px + W * 0.3 - J(30, 80), height: 70 * sAt(fgY), dir: 'x' });
     } else if (choice.foreground === 'wall') {
@@ -3082,6 +3505,11 @@ function composeScene(seed, opts = {}) {
     placePalms(choice.palms, [W * 0.04, W * 0.96], [roadTop - J(6, 14), roadTop - J(0, 4)]);
     if (choice.foreground === 'car') carAt(focalX + J(-40, 40), roadTop + roadH + (H - roadTop - roadH) * J(0.35, 0.55));   // 도로 아래 공터에 세운다
     if (rt() < 0.8) bushAt(awayFromFocal(0.02, 0.15), H * J(0.95, 1.02), 1.1);
+    // 도로 아래 공터 가장자리 (주인공 쪽 끝)에 용설란·파초
+    if (rqt() < 0.5) {
+      const y = roadTop + roadH + (H - roadTop - roadH) * Q(0.3, 0.6), x = focalX < W / 2 ? W * Q(0.02, 0.09) : W * Q(0.91, 0.98);
+      plantAt(rqt() < 0.65 ? 'agave' : 'banana', x, y, 380 * sAt(y));
+    }
   }
 
   return spec;
@@ -3356,6 +3784,17 @@ const SCENE_KINDS = {
   house: { create: (it) => createHouse(it), draw: (ctx, o) => drawHouse(ctx, o) },
   wall: { create: (it) => createWall(it), draw: (ctx, o) => drawWall(ctx, o) },
   bush: { create: (it) => createBush(it), draw: (ctx, o, it) => drawBush(ctx, o, it.x, it.y) },
+  cypress: { create: (it) => createCypress(it), draw: (ctx, o, it) => drawCypress(ctx, o, it.x, it.y) },
+  agave: { create: (it) => createAgave(it), draw: (ctx, o, it) => drawAgave(ctx, o, it.x, it.y) },
+  banana: {
+    dynamic: true,
+    create: (it) => createBanana(it),
+    draw: (ctx, o, it, W, t, wind) => {
+      const w = wind(it.x);
+      drawBananaShadow(ctx, o, it.x, it.y, { time: t, wind: w });
+      drawBanana(ctx, o, it.x, it.y, { time: t, wind: w });
+    },
+  },
   car: { create: (it) => createCar({ ...it, view: '3/4' }), draw: (ctx, o, it) => drawCar(ctx, o, it.x, it.y) },
 };
 
@@ -3950,7 +4389,7 @@ function mountAll(root = document) {
 function registerKind(name, def) { SCENE_KINDS[name] = def; }
 
 const NagaiScene = {
-  version: '1.5.0',
+  version: '1.6.0',
   mount, mountAll, registerKind, saveFile, sceneCode, parseSceneCode,
   composeScene, buildScene, drawRun, choiceOptions, describeChoice,
   tree: COMPOSITION_TREE, kinds: SCENE_KINDS,

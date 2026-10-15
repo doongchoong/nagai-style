@@ -9,7 +9,7 @@
       "name": "nagai-motion",
       "source": "./",
       "description": "Generate animated Hiroshi Nagai–style city-pop scenes (palms swaying, glinting sea and pools) as single HTML pages, plus an album cover maker. 나가이 히로시 풍 움직이는 시티팝 장면과 앨범 커버를 만든다.",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "author": {
         "name": "doongchoong"
       },
