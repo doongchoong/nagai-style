@@ -973,14 +973,15 @@ function drawSea(ctx, sea, opts = {}) {
  *   꽃 없는 덤불: createBush({ flowers: 0 })
  *
  * 그리는 순서
- *   1) 어두운 덩어리: 원 여러 개를 겹쳐 둥근 실루엣을 거의 검은 녹색으로 깐다
  *   0) 땅 그림자 (장면 빛 반대쪽)
- *   2) 잎: 작은 원을 찍는다. 빛 받는 쪽 위는 촘촘하게, 반대쪽·아래는 듬성듬성 → 어두운 바탕이 비친다
- *   3) 꽃: 몇 군데 무리(패치) 중심으로 분홍 원을 찍고, 일부에 밝은 점을 얹는다
+ *   1) 바탕 + 잎 (createFoliage / drawFoliage, 둥근 나무와 같은 방식): 원 여러 개를 겹친 둥근 덩어리를
+ *      작은 잎 송이와 고른 잎 점으로 채운다. 바탕은 짙은 녹색으로 잎 점 자리에만 → 테두리가 잎과 딱 맞다
+ *   2) 꽃: 몇 군데 무리(패치) 중심으로 잎 점 자리에 꽃 원을 찍고, 일부에 밝은 점을 얹는다
+ *   땅선 아래는 잘라서 바닥이 평평하다
  */
 
 const BUSH_PALETTE = {
-  mass: '#0a1a0f',
+  mass: '#14401f',     // 바탕: 검정이 아니라 가장 어두운 잎보다 조금 짙은 녹색
   leaves: ['#1d6532', '#2c8443', '#48a85a', '#7cc98a'],   // 어두운 → 밝은
   flowers: ['#b8306a', '#dc5a96', '#f08cbc'],
   flowerHighlight: '#ffe6f2',
@@ -988,17 +989,79 @@ const BUSH_PALETTE = {
 
 // 분홍 해질녘: 한 단계 어둡게 / 연보라 저녁: 더 어둡게 (꽃도 같이 가라앉는다)
 const BUSH_DUSK = {
-  mass: '#06110a',
+  mass: '#0c2b16',
   leaves: ['#123f22', '#1c5530', '#2c6c3c', '#4a8858'],
   flowers: ['#8e2654', '#b04878', '#c870a0'],
   flowerHighlight: '#f0c8dc',
 };
 const BUSH_NIGHT = {
-  mass: '#04080a',
+  mass: '#08150f',
   leaves: ['#0b1f1a', '#122b22', '#1a3a2c', '#28503c'],
   flowers: ['#4e1c40', '#6a2c58', '#844070'],
   flowerHighlight: '#a87898',
 };
+
+// ───────── 잎 점 (덤불·둥근 나무 공용) ─────────
+// 큰 덩어리(inLobe) 안을 작은 잎 송이로 채우고, 송이 안을 흔든 육각 격자 점으로 채운다.
+//   - 송이는 엇갈린 줄로 깔고 위 줄 송이가 아래 줄 위에 얹힌다 → 송이마다 위가 밝고 아래는 어두운 틈 (층 무늬)
+//   - 점은 크기를 조금씩 달리해 살짝 겹친다 → 간격은 고르되 벌집 무늬는 드러나지 않는다
+//   - 바탕은 점 자리마다 점보다 조금 큰 원 → 바탕과 잎의 테두리가 정확히 같다 (삐져나온 바탕·떠 있는 점 없음)
+// inLobe(x, y, m) → 그 자리를 덮는 가장 앞 덩어리 { x, y, r } 또는 null (m: 덩어리를 넓히는/줄이는 여유)
+function createFoliage(rnd, { width, height, dot, cr, inLobe }) {
+  const hw = width / 2, clumps = [];
+  const rowH = cr * 1.25, colW = cr * 1.6;
+  for (let row = 0, cy = -height; cy < 0; row++, cy += rowH) {
+    for (let cx = -hw * 1.2 + (row % 2) * colW / 2; cx < hw * 1.2; cx += colW) {
+      const x = cx + (rnd() - 0.5) * colW * 0.45, y = cy + (rnd() - 0.5) * rowH * 0.6;
+      if (inLobe(x, y, -cr * 0.35)) clumps.push({ x, y, r: cr * lerp(0.9, 1.1, rnd()) });   // 가장자리 송이가 너무 튀어나오지 않게
+    }
+  }
+  const clumpAt = (x, y) => {           // 가장 위(앞)에 얹힌 송이
+    for (const c of clumps) if ((x - c.x) ** 2 + (y - c.y) ** 2 <= c.r * c.r) return c;
+    // 송이 사이 빈자리가 덩어리 안이면 가장 가까운 송이에 붙인다 (안쪽에 구멍이 생기지 않게)
+    if (!inLobe(x, y, -cr * 0.35)) return null;
+    let best = null, bd = Infinity;
+    for (const c of clumps) { const d = (x - c.x) ** 2 + (y - c.y) ** 2; if (d < bd) { bd = d; best = c; } }
+    return best;
+  };
+  const leaves = [], gap = dot * 2.15, gapY = gap * 0.87;
+  for (let row = 0, y = -height * 1.06; y < 0; row++, y += gapY) {
+    for (let x = -hw * 1.25 + (row % 2) * gap / 2; x < hw * 1.25; x += gap) {
+      const px = x + (rnd() - 0.5) * gap * 0.45, py = y + (rnd() - 0.5) * gapY * 0.45;
+      const c = clumpAt(px, py);
+      if (!c || py > -dot) continue;
+      const l = inLobe(c.x, c.y) ?? { x: 0, y: -height / 2, r: Math.max(hw, height / 2) };
+      leaves.push({
+        x: px, y: py, r: dot * lerp(0.8, 1.4, rnd() ** 1.5),
+        cx: (px - c.x) / c.r, cy: (py - c.y) / c.r, lx: (c.x - l.x) / l.r, ly: (c.y - l.y) / l.r,
+        gx: px / hw, gy: 1 + 2 * py / height, keep: rnd(), toneR: rnd(),
+      });
+    }
+  }
+  return leaves;
+}
+
+// 바탕 + 잎 점. 밝기 = 송이(빛 쪽 위가 밝다) + 큰 덩어리 + 전체. 어두운 쪽 점은 빠져서 송이 사이 틈이 생긴다
+function drawFoliage(ctx, leaves, dot, mass, colors, light) {
+  ctx.fillStyle = mass;
+  ctx.beginPath();
+  for (const l of leaves) { const r = Math.max(l.r, dot) * 1.35; ctx.moveTo(l.x + r, l.y); ctx.arc(l.x, l.y, r, 0, Math.PI * 2); }
+  ctx.fill();
+  const n = colors.length;
+  // 송이 하나하나는 거의 위에서 빛을 받는다 (옆 빛을 그대로 쓰면 송이가 비스듬한 줄무늬처럼 보인다)
+  const cm = Math.hypot(light.x * 0.5, light.y), clx = light.x * 0.5 / cm, cly = light.y / cm;
+  for (const l of leaves) {
+    const lit = clamp01(0.42 + 0.6 * (l.cx * clx + l.cy * cly) + 0.18 * (l.lx * light.x + l.ly * light.y) + 0.25 * (l.gx * light.x + l.gy * light.y));
+    // 보일지는 거의 밝기로만 정한다 (무작위는 조금) → 송이마다 밝은 윗부분과 어두운 틈이 또렷하다
+    l.tone = lit < 0.2 + l.keep * 0.16 ? -1 : Math.min(n - 1, Math.floor(clamp01((lit - 0.2) * 1.15 + (l.toneR - 0.5) * 0.08) * n));
+  }
+  colors.forEach((col, k) => {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    for (const l of leaves) { if (l.tone !== k) continue; ctx.moveTo(l.x + l.r, l.y); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); }
+    ctx.fill();
+  });
+}
 
 function createBush(opts = {}) {
   const rnd = mulberry32(opts.seed ?? 5);
@@ -1021,37 +1084,27 @@ function createBush(opts = {}) {
   }
   bush.core = { x: 0, y: -height * 0.42, rx: hw * 0.86, ry: height * 0.46 };
 
-  // m: 바깥으로 허용하는 여유 → 가장자리 잎이 실루엣 밖으로 삐져나온다
-  const inside = (x, y, m = 0) => {
-    if (y > 0) return false;
-    const c = bush.core;
-    if (((x - c.x) / (c.rx + m)) ** 2 + ((y - c.y) / (c.ry + m)) ** 2 <= 1) return true;
-    if (y > -height * 0.3 && Math.abs(x) < hw * 0.9 + m) return true;
-    for (const b of bush.blobs) if ((x - b.x) ** 2 + (y - b.y) ** 2 <= (b.r + m) ** 2) return true;
-    return false;
-  };
-  const sample = (m = 0) => {
-    for (let k = 0; k < 40; k++) {
-      const x = (rnd() - 0.5) * width * 1.15, y = -rnd() * height * 1.15;
-      if (inside(x, y, m)) return { x, y };
-    }
-    return { x: 0, y: -height * 0.4 };
-  };
   // 후보 점과 난수만 정해두고, 보일지·무슨 색일지는 그릴 때 장면 빛으로 정한다
-  // 2) 잎 후보
-  const leafCount = opts.leaves ?? Math.round(width * height * 0.038);
-  for (let i = 0; i < leafCount; i++) {
-    const p = sample(dot * 1.3);
-    bush.leaves.push({ x: p.x, y: p.y, r: dot * lerp(0.8, 1.6, rnd()), keep: rnd(), toneR: rnd() });
-  }
+  // 2) 잎: 둥근 나무와 같은 잎 송이 + 고른 점 (덩어리 = 몸통 타원·바닥 띠·둘레 원)
+  const coreLobe = { x: bush.core.x, y: bush.core.y, r: Math.max(bush.core.rx, bush.core.ry) };
+  const inLobe = (x, y, m = 0) => {
+    if (y > 0) return null;
+    const c = bush.core;
+    let hit = ((x - c.x) / (c.rx + m)) ** 2 + ((y - c.y) / (c.ry + m)) ** 2 <= 1 || (y > -height * 0.3 && Math.abs(x) < hw * 0.9 + m) ? coreLobe : null;
+    for (const b of bush.blobs) if ((x - b.x) ** 2 + (y - b.y) ** 2 <= (b.r + m) ** 2) hit = b;
+    return hit;
+  };
+  bush.dot = dot;
+  bush.leaves = createFoliage(rnd, { width, height, dot, cr: dot * lerp(5, 6.5, rnd()), inLobe });
 
-  // 3) 꽃 후보: 덤불 윗부분에 치우친 패치 중심
+  // 3) 꽃 후보: 잎 점 자리에서 고른다 (실루엣 밖에 뜨지 않게). 패치 중심은 덤불 윗부분에 치우친다
+  const sample = () => bush.leaves[Math.floor(rnd() * bush.leaves.length)] ?? { x: 0, y: -height * 0.4 };
   const patchCount = opts.flowerPatches ?? 8;
   const patches = [];
   for (let i = 0; i < patchCount; i++) {
     let best = sample();
     for (let k = 0; k < 2; k++) { const c = sample(); if (c.y < best.y) best = c; }
-    patches.push({ ...best, r: lerp(0.18, 0.32, rnd()) * width });
+    patches.push({ x: best.x, y: best.y, r: lerp(0.18, 0.32, rnd()) * width });
   }
   const flowerCount = opts.flowers ?? Math.round(width * height * 0.022);
   for (let i = 0; i < flowerCount && patches.length; i++) {
@@ -1100,23 +1153,10 @@ function drawBush(ctx, bush, x, y) {
   ctx.rect(-bush.width, -bush.height * 2, bush.width * 2, bush.height * 2);
   ctx.clip();
 
-  // 1) 어두운 덩어리
-  ctx.fillStyle = P.mass;
-  const c = bush.core;
-  ctx.beginPath();
-  ctx.ellipse(c.x, c.y, c.rx, c.ry, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillRect(-bush.width * 0.45, -bush.height * 0.3, bush.width * 0.9, bush.height * 0.3);
-  circles(bush.blobs);
+  // 1) 바탕 + 잎 (둥근 나무와 같은 방식)
+  drawFoliage(ctx, bush.leaves, bush.dot, P.mass, P.leaves, light);
 
-  // 2) 잎: 빛 받는 쪽은 촘촘하고 밝게, 반대쪽은 조금 듬성듬성 → 어두운 바탕이 사이사이 비친다
-  for (const l of bush.leaves) {
-    const lit = bushLit(bush, light, l.x, l.y);
-    l.tone = l.keep > lerp(0.4, 0.92, lit) ? -1 : Math.min(3, Math.floor(clamp01(lit * 0.7 + l.toneR * 0.3) * 4));
-  }
-  P.leaves.forEach((col, k) => { ctx.fillStyle = col; circles(bush.leaves, (l) => l.tone === k); });
-
-  // 3) 꽃 + 밝은 점
+  // 2) 꽃 + 밝은 점
   for (const f of bush.flowers) {
     const lit = bushLit(bush, light, f.x, f.y);
     f.tone = f.keep > f.near * lerp(0.35, 1, lit) + 0.04 ? -1 : Math.min(2, Math.floor(clamp01(lit * 0.7 + f.toneR * 0.4) * 3));
@@ -1249,40 +1289,7 @@ function createRoundTree(opts = {}) {
     for (const l of lobes) if ((x - l.x) ** 2 + (y - l.y) ** 2 <= (l.r + m) ** 2) hit = l;   // 가장 앞의 것
     return hit;
   };
-  // 잎 송이: 점 열몇 개 크기의 작은 송이를 엇갈린 줄로 깐다 (몸통 안에 중심이 있는 것만).
-  // 위 줄 송이가 아래 줄 송이 위에 얹혀 → 송이마다 빛 쪽 위가 밝고 아래는 어두운 층이 반복된다.
-  // 가장자리 송이는 실루엣 밖으로 조금 튀어나와 테두리가 오톨도톨해진다
-  const cr = dot * lerp(6, 7.5, rnd()), clumps = [];
-  const rowH = cr * 1.25, colW = cr * 1.6;
-  for (let row = 0, cy = -height; cy < 0; row++, cy += rowH) {
-    for (let cx = -hw * 1.2 + (row % 2) * colW / 2; cx < hw * 1.2; cx += colW) {
-      const x = cx + (rnd() - 0.5) * colW * 0.45, y = cy + (rnd() - 0.5) * rowH * 0.6;
-      if (inLobe(x, y, -cr * 0.35)) clumps.push({ x, y, r: cr * lerp(0.9, 1.1, rnd()) });   // 가장자리 송이가 너무 튀어나오지 않게
-    }
-  }
-  const clumpAt = (x, y) => {           // 가장 위(앞)에 얹힌 송이
-    for (const c of clumps) if ((x - c.x) ** 2 + (y - c.y) ** 2 <= c.r * c.r) return c;
-    // 송이 사이 빈자리가 몸통 안이면 가장 가까운 송이에 붙인다 (안쪽에 하늘이 비치는 구멍이 생기지 않게)
-    if (!inLobe(x, y, -cr * 0.35)) return null;
-    let best = null, bd = Infinity;
-    for (const c of clumps) { const d = (x - c.x) ** 2 + (y - c.y) ** 2; if (d < bd) { bd = d; best = c; } }
-    return best;
-  };
-  // 잎 점: 흔든 육각 격자 위에 크기를 조금씩 달리해서 → 간격은 고르되, 점끼리 살짝 겹쳐 벌집 무늬가 드러나지 않는다
-  const leaves = [], gap = dot * 2.15, gapY = gap * 0.87;
-  for (let row = 0, y = -height * 1.06; y < 0; row++, y += gapY) {
-    for (let x = -hw * 1.25 + (row % 2) * gap / 2; x < hw * 1.25; x += gap) {
-      const px = x + (rnd() - 0.5) * gap * 0.45, py = y + (rnd() - 0.5) * gapY * 0.45;
-      const c = clumpAt(px, py);
-      if (!c || py > -dot) continue;
-      const l = inLobe(c.x, c.y) ?? coreLobe;
-      leaves.push({
-        x: px, y: py, r: dot * lerp(0.8, 1.4, rnd() ** 1.5),
-        cx: (px - c.x) / c.r, cy: (py - c.y) / c.r, lx: (c.x - l.x) / l.r, ly: (c.y - l.y) / l.r,
-        gx: px / hw, gy: 1 + 2 * py / height, keep: rnd(), toneR: rnd(),
-      });
-    }
-  }
+  const leaves = createFoliage(rnd, { width, height, dot, cr: dot * lerp(6, 7.5, rnd()), inLobe });
   const P = TREE_LEAVES[opts.variant] ?? TREE_LEAVES.green, t = PLANT_TONE[opts.tone ?? 'day'];
   const dim = (c) => (t ? mixColor(c, t[0], t[1]) : c);
   return { width, height, dot, lobes, leaves, trunk: rnd() < 0.5, palette: opts.palette ?? { mass: dim(P.mass), leaves: P.leaves.map(dim), trunk: dim('#4a3322') } };
@@ -1298,27 +1305,7 @@ function drawRoundTree(ctx, tr, x, y) {
   fillPoly(ctx, convexHull(pts), SHADOW_COLOR);
   // 밑동 줄기 (가끔 덩어리 아래로 살짝 보인다)
   if (tr.trunk) { ctx.fillStyle = P.trunk; ctx.fillRect(-tr.width * 0.035, -tr.height * 0.25, tr.width * 0.07, tr.height * 0.25); }
-  // 어두운 바탕: 잎 점 자리(안 보이는 점 포함)마다 점보다 조금 큰 원 → 바탕과 잎의 테두리가 정확히 같다.
-  // 매끈한 타원 바탕이 잎 밖으로 삐져나오거나, 가장자리 점이 바탕 없이 하늘에 뜨지 않는다
-  ctx.fillStyle = P.mass;
-  ctx.beginPath();
-  for (const l of tr.leaves) { const r = Math.max(l.r, tr.dot) * 1.35; ctx.moveTo(l.x + r, l.y); ctx.arc(l.x, l.y, r, 0, Math.PI * 2); }
-  ctx.fill();
-  // 잎 점 밝기 = 송이(빛 쪽 위가 밝다) + 큰 덩어리 + 나무 전체. 어두운 쪽 점은 빠져서 송이 사이 틈이 생긴다
-  const n = P.leaves.length;
-  // 송이 하나하나는 거의 위에서 빛을 받는다 (옆 빛을 그대로 쓰면 송이가 비스듬한 줄무늬처럼 보인다)
-  const cm = Math.hypot(light.x * 0.5, light.y), clx = light.x * 0.5 / cm, cly = light.y / cm;
-  for (const l of tr.leaves) {
-    const lit = clamp01(0.42 + 0.6 * (l.cx * clx + l.cy * cly) + 0.18 * (l.lx * light.x + l.ly * light.y) + 0.25 * (l.gx * light.x + l.gy * light.y));
-    // 보일지는 거의 밝기로만 정한다 (무작위는 조금) → 송이마다 밝은 윗부분과 어두운 틈이 또렷하다
-    l.tone = lit < 0.2 + l.keep * 0.16 ? -1 : Math.min(n - 1, Math.floor(clamp01((lit - 0.2) * 1.15 + (l.toneR - 0.5) * 0.08) * n));
-  }
-  P.leaves.forEach((col, k) => {
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    for (const l of tr.leaves) { if (l.tone !== k) continue; ctx.moveTo(l.x + l.r, l.y); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); }
-    ctx.fill();
-  });
+  drawFoliage(ctx, tr.leaves, tr.dot, P.mass, P.leaves, light);
   ctx.restore();
 }
 
