@@ -1214,12 +1214,12 @@ function createPotOpt(opts, rnd) {
 /* ───────── 둥근 나무 (활엽수) ─────────
  * 큰 원 덩어리(로브)를 아래는 넓게 위로는 좁게 쌓아 둥글둥글한 실루엣을 만들고, 온통 작은 잎 점으로 덮는다.
  * 잎 점의 밝기는 그 점이 속한 덩어리 기준으로 정한다 → 덩어리마다 빛 쪽 위가 밝고 아래가 어두워 울퉁불퉁해 보인다.
- * 색: green 보통 녹색, deep 짙은 청록, lime 밝은 연두
+ * 색: green 보통 녹색, deep 짙은 청록, lime 밝은 연두. 바탕(mass)은 검정이 아니라 가장 어두운 잎보다 조금 짙은 녹색
  */
 const TREE_LEAVES = {
-  green: { mass: '#06170d', leaves: ['#123f24', '#1d5a30', '#2f7a3c', '#55a04c', '#9ccc66'] },
-  deep: { mass: '#041214', leaves: ['#0c332e', '#15493e', '#21624f', '#3a8266', '#6eae8c'] },
-  lime: { mass: '#08180a', leaves: ['#1f5418', '#337622', '#559a2e', '#86c23c', '#c8e46a'] },
+  green: { mass: '#0f301b', leaves: ['#123f24', '#1d5a30', '#2f7a3c', '#55a04c', '#9ccc66'] },
+  deep: { mass: '#0a2724', leaves: ['#0c332e', '#15493e', '#21624f', '#3a8266', '#6eae8c'] },
+  lime: { mass: '#173f15', leaves: ['#1f5418', '#337622', '#559a2e', '#86c23c', '#c8e46a'] },
 };
 
 function createRoundTree(opts = {}) {
@@ -1309,7 +1309,7 @@ function drawRoundTree(ctx, tr, x, y) {
   for (const l of tr.leaves) {
     const lit = clamp01(0.42 + 0.6 * (l.cx * clx + l.cy * cly) + 0.18 * (l.lx * light.x + l.ly * light.y) + 0.25 * (l.gx * light.x + l.gy * light.y));
     // 보일지는 거의 밝기로만 정한다 (무작위는 조금) → 송이마다 밝은 윗부분과 어두운 틈이 또렷하다
-    l.tone = lit < 0.28 + l.keep * 0.18 ? -1 : Math.min(n - 1, Math.floor(clamp01((lit - 0.2) * 1.15 + (l.toneR - 0.5) * 0.08) * n));
+    l.tone = lit < 0.2 + l.keep * 0.16 ? -1 : Math.min(n - 1, Math.floor(clamp01((lit - 0.2) * 1.15 + (l.toneR - 0.5) * 0.08) * n));
   }
   P.leaves.forEach((col, k) => {
     ctx.fillStyle = col;
