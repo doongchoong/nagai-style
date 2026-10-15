@@ -1218,7 +1218,8 @@ const TREE_LEAVES = {
 function createRoundTree(opts = {}) {
   const rnd = mulberry32(opts.seed ?? 3);
   const width = opts.width ?? 260, height = opts.height ?? width * 1.2, hw = width / 2;
-  const dot = Math.max(1.4, width / 95);
+  // 큰 나무도 잎 점은 너무 굵지 않게 (점이 작아진 만큼 개수를 늘린다)
+  const dot = Math.max(1.4, Math.min(width / 95, 3.2)), more = (width / 95 / dot) ** 2;
   // 몸통: 큰 타원 하나 + 그 둘레를 따라 겹친 둥근 덩어리 (울퉁불퉁한 가장자리) + 안쪽 덩어리 몇 개
   const core = { x: 0, y: -height * 0.52, rx: hw * 0.8, ry: height * 0.44 };
   const lobes = [];
@@ -1242,7 +1243,7 @@ function createRoundTree(opts = {}) {
     return hit;
   };
   const leaves = [];
-  const count = opts.leaves ?? Math.round(width * height * 0.042);
+  const count = opts.leaves ?? Math.round(width * height * 0.042 * Math.max(1, more));
   for (let i = 0; i < count; i++) {
     let x = 0, y = 0, l = null;
     for (let k = 0; k < 30 && !l; k++) {
@@ -3299,22 +3300,26 @@ function composeScene(seed, opts = {}) {
       const size = w * (stems ? Q(0.26, 0.32) : Q(0.3, 0.38));
       add('agave', 'stand', y, { seed, x, size, stems, tone: plantTone, ...extra });
       if (!stems && !extra.pot && rqt() < 0.5) add('agave', 'stand', y + 2, { seed: seed ^ 0x5bd1, x: x + (rqt() < 0.5 ? -1 : 1) * size * Q(0.9, 1.3), size: size * Q(0.5, 0.7), tone: plantTone });
-    } else if (kind === 'tree') {
-      // 둥근 나무: 가끔 색이 다른 나무 한 그루가 뒤에 겹쳐 선다
-      const variants = [['green', 3], ['deep', 2], ['lime', 2]];
-      const n = rqt() < 0.45 ? 2 : 1, tw = w * Q(1, 1.25), side = rqt() < 0.5 ? -1 : 1;
-      for (let i = n - 1; i >= 0; i--) {
-        const ww = tw * (i ? Q(0.75, 0.95) : 1);
-        add('tree', 'stand', y - i * 4, { seed: seed + i, x: x + i * side * tw * Q(0.45, 0.65), width: ww, height: ww * Q(1.05, 1.4), variant: pickWeighted(rqt, variants), tone: plantTone });
-      }
     }
   };
-  // 덤불 자리: 대개 덤불이고, 가끔 용설란(유카)·둥근 나무가 대신 선다 (전경 귀퉁이에는 나무 없음)
+  // 크고 둥근 나무: 주인공 반대쪽 화면 끝에 걸쳐 일부만 보인다 (액자처럼). 가끔 색이 다른 나무가 뒤에 하나 더
+  const edgeTree = (y) => {
+    const variants = [['green', 3], ['deep', 2], ['lime', 2]], side = focalX < W / 2 ? 1 : -1;
+    const tw = W * Q(0.3, 0.4), th = Math.min(tw * Q(1.1, 1.35), y - H * 0.02);
+    const xc = side > 0 ? W + tw * Q(0.05, 0.25) : -tw * Q(0.05, 0.25);
+    if (rqt() < 0.4) {
+      const bw = tw * Q(0.6, 0.8);
+      add('tree', 'stand', y - Q(10, 30) * sAt(y), { seed: Math.floor(rqp() * 1e9), x: xc - side * tw * Q(0.3, 0.45), width: bw, height: Math.min(bw * Q(1.1, 1.4), y - H * 0.04), variant: pickWeighted(rqt, variants), tone: plantTone });
+    }
+    add('tree', 'stand', y, { seed: Math.floor(rqp() * 1e9), x: xc, width: tw, height: th, variant: pickWeighted(rqt, variants), tone: plantTone });
+  };
+  let edgeTreeY = null;
+  // 덤불 자리: 대개 덤불이고, 가끔 용설란(유카)이 대신 선다
   const bushAt = (x, y, big = 1) => {
     const s = sAt(y), seed = childSeed(), width = J(280, 420) * s * big, height = J(170, 250) * s * big, flowers = rp() < 0.35 ? 0 : undefined;
-    const kind = pickWeighted(rqt, big >= 1 ? [['bush', 6], ['agave', 2]] : [['bush', 5], ['agave', 2], ['tree', 2]]);
+    const kind = pickWeighted(rqt, big >= 1 ? [['bush', 6], ['agave', 2]] : [['bush', 5], ['agave', 2]]);
     if (kind === 'bush') add('bush', 'stand', y, { seed, x, width, height, flowers, palette: bushPalette });
-    else plantAt(kind, x, y, kind === 'tree' ? width * 1.5 : width);
+    else plantAt(kind, x, y, width);
   };
   const carAt = (x, y) => {
     const s = sAt(y), t = pickWeighted(rp, [[{ body: 'coupe', roof: 'white' }, 2], [{ body: 'coupe', roof: 'open' }, 2], [{ body: 'sedan', roof: 'white' }, 2], [{ body: 'sedan', roof: 'body' }, 1]]);
@@ -3330,8 +3335,7 @@ function composeScene(seed, opts = {}) {
       carAt(cx + J(-40, 40), H * J(0.86, 0.92));
     }
     if (rt() < 0.7) bushAt(awayFromFocal(0.02, 0.12), H * J(0.93, 1.0), 1.2);
-    // 해변 한쪽 끝에 둥근 나무 숲 (주인공 반대쪽, 화면 밖으로 조금 잘린다)
-    if (rqt() < 0.4) { const y = landTop + (H - landTop) * Q(0.12, 0.25); plantAt('tree', focalX < W / 2 ? W * Q(0.88, 1) : W * Q(0, 0.12), y, 560 * sAt(y)); }
+    edgeTreeY = landTop + (H - landTop) * Q(0.2, 0.4);
     // 모래밭에 용설란·유카 한 무리
     if (rqt() < 0.55) { const y = landTop + (H - landTop) * Q(0.35, 0.55); plantAt('agave', awayQ(0.04, 0.2), y, 360 * sAt(y)); }
   }
@@ -3356,11 +3360,7 @@ function composeScene(seed, opts = {}) {
     });
     placePalms(choice.palms, [W * 0.05, W * 0.95], [houseBase - J(25, 40), houseBase - J(2, 12)], spans);
     for (const sp of spans) if (rp() < 0.8) bushAt(rp() < 0.5 ? sp[0] - J(10, 40) * s : sp[1] + J(10, 40) * s, houseBase + J(6, 18), 0.6);
-    // 건물 옆 모서리에 둥근 나무 (건물 앞면보다 살짝 앞에 — 뒤에 두면 옆면에 가려진다)
-    for (const sp of spans) {
-      const r = rqt(), left = rqt() < 0.5;
-      if (r < 0.45) plantAt('tree', left ? sp[0] - Q(10, 70) * s : sp[1] + Q(10, 70) * s, houseBase + Q(2, 5), 400 * s);
-    }
+    edgeTreeY = houseBase + (H - houseBase) * Q(0.05, 0.2);
 
     const fgY = houseBase + (H - houseBase) * J(0.28, 0.4);
     if (choice.foreground === 'pool') {
@@ -3424,7 +3424,9 @@ function composeScene(seed, opts = {}) {
       const y = roadTop + roadH + (H - roadTop - roadH) * Q(0.3, 0.6), x = focalX < W / 2 ? W * Q(0.02, 0.09) : W * Q(0.91, 0.98);
       plantAt('agave', x, y, 380 * sAt(y));
     }
+    edgeTreeY = roadTop + roadH + (H - roadTop - roadH) * Q(0.15, 0.35);
   }
+  if (edgeTreeY !== null && rqt() < 0.55) edgeTree(edgeTreeY);
 
   return spec;
 }

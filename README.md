@@ -23,7 +23,7 @@ The repository holds three things:
 ## Features
 
 - **Composition decision tree.** Theme (beach, resort, poolside, coast road), what lies far off (sea, city skyline, island, hedge), the focal point, foreground (pool, car, wall), palms, sky (deep blue, bright afternoon, pink dusk, violet evening). Fix what you care about and leave the rest to the seed.
-- **Plants.** Besides palms and flowering bushes (pink, red, white, yellow or purple blossoms per scene): round dotted-leaf trees (green, deep teal or lime), agave and yucca, and potted plants by the pool.
+- **Plants.** Besides palms and flowering bushes (pink, red, white, yellow or purple blossoms per scene): big round dotted-leaf trees framing the edge of the picture (green, deep teal or lime), agave and yucca, and potted plants by the pool.
 - **One light, one style.** Every object follows the same light and shadow, stepped flat shading and one-point perspective, so a scene always holds together.
 - **Animated.** Wind in the palms, breaking waves, glints on water. Capped at 30 fps and paused off screen, so it is kind to batteries.
 - **Scene codes.** A scene is one short line such as `83608-12 9:16 sky:violet`. Paste it into the seed box or open `…/#nagai=83608-12` to get the exact same scene back.
