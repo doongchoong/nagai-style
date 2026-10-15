@@ -1001,10 +1001,40 @@ const BUSH_NIGHT = {
   flowerHighlight: '#a87898',
 };
 
+// 푸아송 디스크 샘플링 (Bridson): 사각형 안을 서로 minD 이상 떨어진 점으로 고르게, 줄 없이 채운다. 시드 난수 사용
+function poissonDisk(rnd, x0, y0, x1, y1, minD, tries = 12) {
+  const cell = minD / Math.SQRT2, gw = Math.ceil((x1 - x0) / cell), gh = Math.ceil((y1 - y0) / cell);
+  const grid = new Int32Array(gw * gh).fill(-1), pts = [], active = [];
+  const put = (x, y) => { grid[Math.floor((y - y0) / cell) * gw + Math.floor((x - x0) / cell)] = pts.length; pts.push({ x, y }); active.push(pts.length - 1); };
+  const ok = (x, y) => {
+    if (x < x0 || x >= x1 || y < y0 || y >= y1) return false;
+    const gx = Math.floor((x - x0) / cell), gy = Math.floor((y - y0) / cell);
+    for (let j = Math.max(0, gy - 2); j <= Math.min(gh - 1, gy + 2); j++) {
+      for (let i = Math.max(0, gx - 2); i <= Math.min(gw - 1, gx + 2); i++) {
+        const k = grid[j * gw + i];
+        if (k >= 0 && (pts[k].x - x) ** 2 + (pts[k].y - y) ** 2 < minD * minD) return false;
+      }
+    }
+    return true;
+  };
+  put(lerp(x0, x1, rnd()), lerp(y0, y1, rnd()));
+  while (active.length) {
+    const ai = Math.floor(rnd() * active.length), a = pts[active[ai]];
+    let found = false;
+    for (let t = 0; t < tries; t++) {
+      const ang = rnd() * Math.PI * 2, d = minD * (1 + rnd());
+      const x = a.x + Math.cos(ang) * d, y = a.y + Math.sin(ang) * d;
+      if (ok(x, y)) { put(x, y); found = true; break; }
+    }
+    if (!found) { active[ai] = active[active.length - 1]; active.pop(); }
+  }
+  return pts;
+}
+
 // ───────── 잎 점 (덤불·둥근 나무 공용) ─────────
-// 큰 덩어리(inLobe) 안을 작은 잎 송이로 채우고, 송이 안을 흔든 육각 격자 점으로 채운다.
+// 큰 덩어리(inLobe) 안을 작은 잎 송이로 채우고, 송이 안을 고른 간격의 잎 점으로 채운다.
 //   - 송이는 엇갈린 줄로 깔고 위 줄 송이가 아래 줄 위에 얹힌다 → 송이마다 위가 밝고 아래는 어두운 틈 (층 무늬)
-//   - 점은 크기를 조금씩 달리해 살짝 겹친다 → 간격은 고르되 벌집 무늬는 드러나지 않는다
+//   - 점 자리는 푸아송 디스크(줄 없는 고른 간격), 크기를 조금씩 달리해 살짝 겹친다 → 벌집 무늬가 없다
 //   - 바탕은 점 자리마다 점보다 조금 큰 원 → 바탕과 잎의 테두리가 정확히 같다 (삐져나온 바탕·떠 있는 점 없음)
 // inLobe(x, y, m) → 그 자리를 덮는 가장 앞 덩어리 { x, y, r } 또는 null (m: 덩어리를 넓히는/줄이는 여유)
 function createFoliage(rnd, { width, height, dot, cr, inLobe }) {
@@ -1024,10 +1054,10 @@ function createFoliage(rnd, { width, height, dot, cr, inLobe }) {
     for (const c of clumps) { const d = (x - c.x) ** 2 + (y - c.y) ** 2; if (d < bd) { bd = d; best = c; } }
     return best;
   };
-  const leaves = [], gap = dot * 2.15, gapY = gap * 0.87;
-  for (let row = 0, y = -height * 1.06; y < 0; row++, y += gapY) {
-    for (let x = -hw * 1.25 + (row % 2) * gap / 2; x < hw * 1.25; x += gap) {
-      const px = x + (rnd() - 0.5) * gap * 0.45, py = y + (rnd() - 0.5) * gapY * 0.45;
+  // 잎 점 자리: 푸아송 디스크 — 점끼리 최소 간격만 지키며 무작위로 채운다 → 간격은 고르되 격자의 줄·방향(벌집 무늬)이 없다
+  const leaves = [];
+  for (const p of poissonDisk(rnd, -hw * 1.25, -height * 1.06, hw * 1.25, 0, dot * 1.75)) {
+      const px = p.x, py = p.y;
       const c = clumpAt(px, py);
       if (!c || py > -dot) continue;
       const l = inLobe(c.x, c.y) ?? { x: 0, y: -height / 2, r: Math.max(hw, height / 2) };
@@ -1036,7 +1066,6 @@ function createFoliage(rnd, { width, height, dot, cr, inLobe }) {
         cx: (px - c.x) / c.r, cy: (py - c.y) / c.r, lx: (c.x - l.x) / l.r, ly: (c.y - l.y) / l.r,
         gx: px / hw, gy: 1 + 2 * py / height, keep: rnd(), toneR: rnd(),
       });
-    }
   }
   return leaves;
 }
@@ -1045,7 +1074,8 @@ function createFoliage(rnd, { width, height, dot, cr, inLobe }) {
 function drawFoliage(ctx, leaves, dot, mass, colors, light) {
   ctx.fillStyle = mass;
   ctx.beginPath();
-  for (const l of leaves) { const r = Math.max(l.r, dot) * 1.35; ctx.moveTo(l.x + r, l.y); ctx.arc(l.x, l.y, r, 0, Math.PI * 2); }
+  // 반지름은 점 사이 최대 빈자리(= 최소 간격 1.75점)보다 조금 크게 → 틈으로 하늘·땅이 비치지 않는다
+  for (const l of leaves) { const r = Math.max(l.r * 1.35, dot * 1.85); ctx.moveTo(l.x + r, l.y); ctx.arc(l.x, l.y, r, 0, Math.PI * 2); }
   ctx.fill();
   const n = colors.length;
   // 송이 하나하나는 거의 위에서 빛을 받는다 (옆 빛을 그대로 쓰면 송이가 비스듬한 줄무늬처럼 보인다)
