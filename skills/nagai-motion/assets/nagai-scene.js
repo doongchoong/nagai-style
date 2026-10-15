@@ -1264,16 +1264,16 @@ function createRoundTree(opts = {}) {
     for (const c of clumps) if ((x - c.x) ** 2 + (y - c.y) ** 2 <= c.r * c.r) return c;
     return null;
   };
-  // 잎 점: 살짝 흔든 육각 격자 위에 같은 크기로 → 간격이 고르고 겹치지 않는다
+  // 잎 점: 흔든 육각 격자 위에 크기를 조금씩 달리해서 → 간격은 고르되, 점끼리 살짝 겹쳐 벌집 무늬가 드러나지 않는다
   const leaves = [], gap = dot * 2.15, gapY = gap * 0.87;
   for (let row = 0, y = -height * 1.06; y < 0; row++, y += gapY) {
     for (let x = -hw * 1.25 + (row % 2) * gap / 2; x < hw * 1.25; x += gap) {
-      const px = x + (rnd() - 0.5) * gap * 0.22, py = y + (rnd() - 0.5) * gapY * 0.22;
+      const px = x + (rnd() - 0.5) * gap * 0.45, py = y + (rnd() - 0.5) * gapY * 0.45;
       const c = clumpAt(px, py);
       if (!c || py > -dot) continue;
       const l = inLobe(c.x, c.y) ?? coreLobe;
       leaves.push({
-        x: px, y: py, r: dot * lerp(0.92, 1.05, rnd()),
+        x: px, y: py, r: dot * lerp(0.8, 1.4, rnd() ** 1.5),
         cx: (px - c.x) / c.r, cy: (py - c.y) / c.r, lx: (c.x - l.x) / l.r, ly: (c.y - l.y) / l.r,
         gx: px / hw, gy: 1 + 2 * py / height, keep: rnd(), toneR: rnd(),
       });
