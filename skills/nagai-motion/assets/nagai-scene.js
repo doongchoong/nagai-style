@@ -1039,21 +1039,21 @@ function createBush(opts = {}) {
   };
   // 후보 점과 난수만 정해두고, 보일지·무슨 색일지는 그릴 때 장면 빛으로 정한다
   // 2) 잎 후보
-  const leafCount = opts.leaves ?? Math.round(width * height * 0.03);
+  const leafCount = opts.leaves ?? Math.round(width * height * 0.038);
   for (let i = 0; i < leafCount; i++) {
     const p = sample(dot * 1.3);
     bush.leaves.push({ x: p.x, y: p.y, r: dot * lerp(0.8, 1.6, rnd()), keep: rnd(), toneR: rnd() });
   }
 
   // 3) 꽃 후보: 덤불 윗부분에 치우친 패치 중심
-  const patchCount = opts.flowerPatches ?? 6;
+  const patchCount = opts.flowerPatches ?? 8;
   const patches = [];
   for (let i = 0; i < patchCount; i++) {
     let best = sample();
     for (let k = 0; k < 2; k++) { const c = sample(); if (c.y < best.y) best = c; }
-    patches.push({ ...best, r: lerp(0.14, 0.28, rnd()) * width });
+    patches.push({ ...best, r: lerp(0.18, 0.32, rnd()) * width });
   }
-  const flowerCount = opts.flowers ?? Math.round(width * height * 0.016);
+  const flowerCount = opts.flowers ?? Math.round(width * height * 0.022);
   for (let i = 0; i < flowerCount && patches.length; i++) {
     const p = sample();
     let near = 0;
@@ -1094,6 +1094,12 @@ function drawBush(ctx, bush, x, y) {
   ctx.ellipse(so.dx * 0.5, 2, bush.width * 0.48 + Math.abs(so.dx) * 0.5, Math.max(4, bush.height * 0.05 + so.dy * 0.5), 0, 0, Math.PI * 2);
   ctx.fill();
 
+  // 땅선 아래는 자른다: 양 끝 덩어리 원이 땅 밑으로 내려가 바퀴처럼 보이지 않게 (바닥은 평평하게)
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(-bush.width, -bush.height * 2, bush.width * 2, bush.height * 2);
+  ctx.clip();
+
   // 1) 어두운 덩어리
   ctx.fillStyle = P.mass;
   const c = bush.core;
@@ -1103,10 +1109,10 @@ function drawBush(ctx, bush, x, y) {
   ctx.fillRect(-bush.width * 0.45, -bush.height * 0.3, bush.width * 0.9, bush.height * 0.3);
   circles(bush.blobs);
 
-  // 2) 잎: 빛 받는 쪽은 촘촘하고 밝게, 반대쪽은 듬성듬성 → 어두운 바탕이 비친다
+  // 2) 잎: 빛 받는 쪽은 촘촘하고 밝게, 반대쪽은 조금 듬성듬성 → 어두운 바탕이 사이사이 비친다
   for (const l of bush.leaves) {
     const lit = bushLit(bush, light, l.x, l.y);
-    l.tone = l.keep > lerp(0.08, 0.85, lit) ? -1 : Math.min(3, Math.floor(clamp01(lit * 0.7 + l.toneR * 0.3) * 4));
+    l.tone = l.keep > lerp(0.4, 0.92, lit) ? -1 : Math.min(3, Math.floor(clamp01(lit * 0.7 + l.toneR * 0.3) * 4));
   }
   P.leaves.forEach((col, k) => { ctx.fillStyle = col; circles(bush.leaves, (l) => l.tone === k); });
 
@@ -1127,6 +1133,7 @@ function drawBush(ctx, bush, x, y) {
   }
   ctx.fill();
 
+  ctx.restore();   // 땅선 자르기
   ctx.restore();
 }
 
@@ -3257,7 +3264,7 @@ function composeScene(seed, opts = {}) {
     const hy = horizonY + (H - horizonY) * J(0.08, 0.12), s = sAt(hy) * 1.4;
     for (let x = J(-60, -10); x < W + 60;) {
       const w = J(500, 700) * s;
-      add('bush', 'stand', hy + J(-3, 3), { seed: childSeed(), x, width: w, height: w * J(0.55, 0.7), flowers: rp() < 0.4 ? undefined : 0, palette: bushPalette });
+      add('bush', 'stand', hy + J(-3, 3), { seed: childSeed(), x, width: w, height: w * J(0.55, 0.7), flowers: rp() < 0.4 || rqt() < 0.8 ? undefined : 0, palette: bushPalette });   // 꽃 없는 덤불은 드물게 (화사하게)
       x += w * J(0.55, 0.8);
     }
   }
@@ -3316,7 +3323,7 @@ function composeScene(seed, opts = {}) {
   let edgeTreeY = null;
   // 덤불 자리: 대개 덤불이고, 가끔 용설란(유카)이 대신 선다
   const bushAt = (x, y, big = 1) => {
-    const s = sAt(y), seed = childSeed(), width = J(280, 420) * s * big, height = J(170, 250) * s * big, flowers = rp() < 0.35 ? 0 : undefined;
+    const s = sAt(y), seed = childSeed(), width = J(280, 420) * s * big, height = J(170, 250) * s * big, flowers = rp() < 0.35 && rqt() < 0.3 ? 0 : undefined;
     const kind = pickWeighted(rqt, big >= 1 ? [['bush', 6], ['agave', 2]] : [['bush', 5], ['agave', 2]]);
     if (kind === 'bush') add('bush', 'stand', y, { seed, x, width, height, flowers, palette: bushPalette });
     else plantAt(kind, x, y, width);
