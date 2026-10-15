@@ -1352,11 +1352,28 @@ function createRoundTree(opts = {}) {
   const leaves = createFoliage(rnd, { width, height, dot, cr: dot * lerp(6, 7.5, rnd()), inLobe });
   const P = TREE_LEAVES[opts.variant] ?? TREE_LEAVES.green, t = PLANT_TONE[opts.tone ?? 'day'];
   const dim = (c) => (t ? mixColor(c, t[0], t[1]) : c);
-  return { width, height, dot, lobes, leaves, trunk: rnd() < 0.5, palette: opts.palette ?? { mass: dim(P.mass), leaves: P.leaves.map(dim), trunk: dim('#4a3322') } };
+  const trunk = rnd() < 0.5;
+  return { width, height, dot, lobes, leaves, trunk, phase: rnd() * 10, palette: opts.palette ?? { mass: dim(P.mass), leaves: P.leaves.map(dim), trunk: dim('#4a3322') } };
 }
 
-function drawRoundTree(ctx, tr, x, y) {
-  const P = tr.palette, light = lightVector();
+// 잎 덩어리를 한 번 그려 두는 그림 (현재 확대 배율에 맞춰, 배율이 바뀌면 다시)
+function treeSprite(tr, res, light) {
+  if (tr._sprite && tr._sprite.res === res) return tr._sprite;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const l of tr.leaves) { const r = Math.max(l.r, l.back) + 1; x0 = Math.min(x0, l.x - r); x1 = Math.max(x1, l.x + r); y0 = Math.min(y0, l.y - r); y1 = Math.max(y1, l.y + r); }
+  if (!isFinite(x0)) { x0 = -1; x1 = 1; y0 = -1; y1 = 0; }
+  const c = document.createElement('canvas');
+  c.width = Math.ceil((x1 - x0) * res); c.height = Math.ceil((y1 - y0) * res);
+  const g = c.getContext('2d');
+  g.scale(res, res); g.translate(-x0, -y0);
+  drawFoliage(g, tr.leaves, tr.dot, tr.palette.mass, tr.palette.leaves, light);
+  return (tr._sprite = { c, res, x0, y0, w: x1 - x0, h: y1 - y0 });
+}
+
+// 바람: 잎이 빽빽해서 야자수처럼 크게 휘지는 않는다. 위로 갈수록 바람 쪽으로 살짝 밀리고(밑동은 고정),
+// 가로 띠마다 아주 작게 일렁인다. 바람은 세기로만 쓴다 (time × wind 없음 → 바람이 바뀌어도 튀지 않는다)
+function drawRoundTree(ctx, tr, x, y, opts = {}) {
+  const P = tr.palette, light = lightVector(), time = opts.time ?? 0, wind = opts.wind ?? 0;
   ctx.save();
   ctx.translate(x, y);
   // 그림자: 밑동 + 덩어리들을 땅에 눕힌 모양
@@ -1365,7 +1382,18 @@ function drawRoundTree(ctx, tr, x, y) {
   fillPoly(ctx, convexHull(pts), SHADOW_COLOR);
   // 밑동 줄기 (가끔 덩어리 아래로 살짝 보인다)
   if (tr.trunk) { ctx.fillStyle = P.trunk; ctx.fillRect(-tr.width * 0.035, -tr.height * 0.25, tr.width * 0.07, tr.height * 0.25); }
-  drawFoliage(ctx, tr.leaves, tr.dot, P.mass, P.leaves, light);
+  if (typeof document === 'undefined') { drawFoliage(ctx, tr.leaves, tr.dot, P.mass, P.leaves, light); ctx.restore(); return; }
+  const m = ctx.getTransform(), k = Math.hypot(m.a, m.b) || 1;
+  const sp = treeSprite(tr, Math.min(3, Math.ceil(k * 2) / 2), light);
+  const lean = wind * tr.height * 0.012 + Math.sin(time * 1.1 + tr.phase) * tr.height * 0.002 * (0.3 + Math.abs(wind));
+  const ripple = tr.dot * 0.35 * (0.3 + Math.abs(wind));
+  const step = Math.max(2, tr.dot * 1.2), S = sp.res;
+  for (let sy = 0; sy < sp.h; sy += step) {
+    const yy = sp.y0 + sy, up = clamp01(-yy / tr.height);                 // 0 밑동 → 1 꼭대기
+    const dx = lean * up ** 1.6 + Math.sin(time * 2.3 + yy * 0.07 + tr.phase) * ripple * up;
+    const h = Math.min(step, sp.h - sy);
+    ctx.drawImage(sp.c, 0, sy * S, sp.c.width, Math.ceil(h * S + 1), sp.x0 + dx, yy, sp.w, h + 1 / S);
+  }
   ctx.restore();
 }
 
@@ -3779,7 +3807,11 @@ const SCENE_KINDS = {
   house: { create: (it) => createHouse(it), draw: (ctx, o) => drawHouse(ctx, o) },
   wall: { create: (it) => createWall(it), draw: (ctx, o) => drawWall(ctx, o) },
   bush: { create: (it) => createBush(it), draw: (ctx, o, it) => drawBush(ctx, o, it.x, it.y) },
-  tree: { create: (it) => createRoundTree(it), draw: (ctx, o, it) => drawRoundTree(ctx, o, it.x, it.y) },
+  tree: {
+    dynamic: true,                                       // 바람에 살짝 밀리고 일렁인다 (잎 덩어리는 한 번 그려 둔 그림을 띠로 밀어 그린다)
+    create: (it) => createRoundTree(it),
+    draw: (ctx, o, it, W, t, wind) => drawRoundTree(ctx, o, it.x, it.y, { time: t, wind: wind(it.x) }),
+  },
   agave: { create: (it) => createAgave(it), draw: (ctx, o, it) => drawAgave(ctx, o, it.x, it.y) },
   car: { create: (it) => createCar({ ...it, view: '3/4' }), draw: (ctx, o, it) => drawCar(ctx, o, it.x, it.y) },
 };
