@@ -1225,8 +1225,8 @@ const TREE_LEAVES = {
 function createRoundTree(opts = {}) {
   const rnd = mulberry32(opts.seed ?? 3);
   const width = opts.width ?? 260, height = opts.height ?? width * 1.2, hw = width / 2;
-  // 큰 나무도 잎 점은 너무 굵지 않게 (점이 작아진 만큼 개수를 늘린다)
-  const dot = Math.max(1.4, Math.min(width / 95, 3.2)), more = (width / 95 / dot) ** 2;
+  // 큰 나무도 잎 점은 너무 굵지 않게
+  const dot = Math.max(1.3, Math.min(width / 110, 2.6));
   // 몸통: 큰 타원 하나 + 그 둘레를 따라 겹친 둥근 덩어리 (울퉁불퉁한 가장자리) + 안쪽 덩어리 몇 개
   const core = { x: 0, y: -height * 0.52, rx: hw * 0.8, ry: height * 0.44 };
   const lobes = [];
@@ -1249,20 +1249,39 @@ function createRoundTree(opts = {}) {
     for (const l of lobes) if ((x - l.x) ** 2 + (y - l.y) ** 2 <= (l.r + m) ** 2) hit = l;   // 가장 앞의 것
     return hit;
   };
-  const leaves = [];
-  const count = opts.leaves ?? Math.round(width * height * 0.042 * Math.max(1, more));
-  for (let i = 0; i < count; i++) {
-    let x = 0, y = 0, l = null;
-    for (let k = 0; k < 30 && !l; k++) {
-      x = (rnd() - 0.5) * width * 1.1; y = -rnd() * height * 1.04;
-      l = inLobe(x, y, dot * 1.2);
+  // 잎 송이: 점 열몇 개 크기의 작은 송이를 엇갈린 줄로 깐다 (몸통 안에 중심이 있는 것만).
+  // 위 줄 송이가 아래 줄 송이 위에 얹혀 → 송이마다 빛 쪽 위가 밝고 아래는 어두운 층이 반복된다.
+  // 가장자리 송이는 실루엣 밖으로 반쯤 튀어나와 테두리가 오톨도톨해진다
+  const cr = dot * lerp(6, 7.5, rnd()), clumps = [];
+  const rowH = cr * 1.25, colW = cr * 1.6;
+  for (let row = 0, cy = -height; cy < 0; row++, cy += rowH) {
+    for (let cx = -hw * 1.2 + (row % 2) * colW / 2; cx < hw * 1.2; cx += colW) {
+      const x = cx + (rnd() - 0.5) * colW * 0.45, y = cy + (rnd() - 0.5) * rowH * 0.6;
+      if (inLobe(x, y)) clumps.push({ x, y, r: cr * lerp(0.9, 1.1, rnd()) });
     }
-    if (!l) continue;
-    leaves.push({ x, y, r: dot * lerp(0.8, 1.45, rnd()), lx: (x - l.x) / l.r, ly: (y - l.y) / l.r, gx: x / hw, gy: 1 + 2 * y / height, keep: rnd(), toneR: rnd() });
+  }
+  const clumpAt = (x, y) => {           // 가장 위(앞)에 얹힌 송이
+    for (const c of clumps) if ((x - c.x) ** 2 + (y - c.y) ** 2 <= c.r * c.r) return c;
+    return null;
+  };
+  // 잎 점: 살짝 흔든 육각 격자 위에 같은 크기로 → 간격이 고르고 겹치지 않는다
+  const leaves = [], gap = dot * 2.15, gapY = gap * 0.87;
+  for (let row = 0, y = -height * 1.06; y < 0; row++, y += gapY) {
+    for (let x = -hw * 1.25 + (row % 2) * gap / 2; x < hw * 1.25; x += gap) {
+      const px = x + (rnd() - 0.5) * gap * 0.22, py = y + (rnd() - 0.5) * gapY * 0.22;
+      const c = clumpAt(px, py);
+      if (!c || py > -dot) continue;
+      const l = inLobe(c.x, c.y) ?? coreLobe;
+      leaves.push({
+        x: px, y: py, r: dot * lerp(0.92, 1.05, rnd()),
+        cx: (px - c.x) / c.r, cy: (py - c.y) / c.r, lx: (c.x - l.x) / l.r, ly: (c.y - l.y) / l.r,
+        gx: px / hw, gy: 1 + 2 * py / height, keep: rnd(), toneR: rnd(),
+      });
+    }
   }
   const P = TREE_LEAVES[opts.variant] ?? TREE_LEAVES.green, t = PLANT_TONE[opts.tone ?? 'day'];
   const dim = (c) => (t ? mixColor(c, t[0], t[1]) : c);
-  return { width, height, core, lobes, leaves, trunk: rnd() < 0.5, palette: opts.palette ?? { mass: dim(P.mass), leaves: P.leaves.map(dim), trunk: dim('#4a3322') } };
+  return { width, height, core, lobes, clumps, leaves, trunk: rnd() < 0.5, palette: opts.palette ?? { mass: dim(P.mass), leaves: P.leaves.map(dim), trunk: dim('#4a3322') } };
 }
 
 function drawRoundTree(ctx, tr, x, y) {
@@ -1281,12 +1300,16 @@ function drawRoundTree(ctx, tr, x, y) {
   const c = tr.core;
   ctx.ellipse(c.x, c.y, c.rx, c.ry, 0, 0, Math.PI * 2);
   for (const l of tr.lobes) { ctx.moveTo(l.x + l.r, l.y); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); }
+  for (const l of tr.clumps) { ctx.moveTo(l.x + l.r, l.y); ctx.arc(l.x, l.y, l.r, 0, Math.PI * 2); }
   ctx.fill();
-  // 잎 점: 덩어리 안에서 빛 쪽 위는 촘촘하고 밝게, 아래는 듬성듬성 어둡게 + 나무 전체로도 빛 쪽이 밝다
+  // 잎 점 밝기 = 송이(빛 쪽 위가 밝다) + 큰 덩어리 + 나무 전체. 어두운 쪽 점은 빠져서 송이 사이 틈이 생긴다
   const n = P.leaves.length;
+  // 송이 하나하나는 거의 위에서 빛을 받는다 (옆 빛을 그대로 쓰면 송이가 비스듬한 줄무늬처럼 보인다)
+  const cm = Math.hypot(light.x * 0.5, light.y), clx = light.x * 0.5 / cm, cly = light.y / cm;
   for (const l of tr.leaves) {
-    const lit = clamp01(0.45 + 0.45 * (l.lx * light.x + l.ly * light.y) + 0.22 * (l.gx * light.x + l.gy * light.y));
-    l.tone = l.keep > lerp(0.12, 0.95, lit) ? -1 : Math.min(n - 1, Math.floor(clamp01(lit * 0.8 + l.toneR * 0.2) * n));
+    const lit = clamp01(0.42 + 0.6 * (l.cx * clx + l.cy * cly) + 0.18 * (l.lx * light.x + l.ly * light.y) + 0.25 * (l.gx * light.x + l.gy * light.y));
+    // 보일지는 거의 밝기로만 정한다 (무작위는 조금) → 송이마다 밝은 윗부분과 어두운 틈이 또렷하다
+    l.tone = lit < 0.28 + l.keep * 0.18 ? -1 : Math.min(n - 1, Math.floor(clamp01((lit - 0.2) * 1.15 + (l.toneR - 0.5) * 0.08) * n));
   }
   P.leaves.forEach((col, k) => {
     ctx.fillStyle = col;
