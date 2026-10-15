@@ -3415,17 +3415,23 @@ function composeScene(seed, opts = {}) {
       if (!stems && !extra.pot && rqt() < 0.5) add('agave', 'stand', y + 2, { seed: seed ^ 0x5bd1, x: x + (rqt() < 0.5 ? -1 : 1) * size * Q(0.9, 1.3), size: size * Q(0.5, 0.7), tone: plantTone });
     }
   };
-  // 크고 둥근 나무: 주인공 반대쪽 화면 끝에 걸쳐 일부만 보인다 (액자처럼). 가끔 색이 다른 나무가 뒤에 하나 더
+  // 크고 둥근 나무: 주인공 반대쪽 화면 끝에 걸쳐 일부만 보인다 (액자처럼). 가끔 작은 나무가 앞에 하나 더
   const edgeTree = (y) => {
     const variants = [['green', 3], ['deep', 2], ['lime', 2]], side = focalX < W / 2 ? 1 : -1;
     const tw = W * Q(0.3, 0.4), th = Math.min(tw * Q(1.1, 1.35), y - H * 0.02);
     const xc = side > 0 ? W + tw * Q(0.05, 0.25) : -tw * Q(0.05, 0.25);
+    const big = pickWeighted(rqt, variants);
+    add('tree', 'stand', y, { seed: Math.floor(rqp() * 1e9), x: xc, width: tw, height: th, variant: big, tone: plantTone });
+    // 가끔 절반쯤 되는 작은 나무가 큰 나무 앞, 조금 안쪽에 겹쳐 선다 (색은 큰 나무와 다르게)
     if (rqt() < 0.4) {
-      const bw = tw * Q(0.6, 0.8);
-      add('tree', 'stand', y - Q(10, 30) * sAt(y), { seed: Math.floor(rqp() * 1e9), x: xc - side * tw * Q(0.3, 0.45), width: bw, height: Math.min(bw * Q(1.1, 1.4), y - H * 0.04), variant: pickWeighted(rqt, variants), tone: plantTone });
+      const sw = tw * Q(0.45, 0.6), sy = Math.min(H - 4, y + Q(20, 45) * sAt(y));
+      add('tree', 'stand', sy, {
+        seed: Math.floor(rqp() * 1e9), x: xc - side * tw * Q(0.4, 0.55), width: sw, height: Math.min(sw * Q(1, 1.25), sy - H * 0.04),
+        variant: pickWeighted(rqt, variants.filter((v) => v[0] !== big)), tone: plantTone,
+      });
     }
-    add('tree', 'stand', y, { seed: Math.floor(rqp() * 1e9), x: xc, width: tw, height: th, variant: pickWeighted(rqt, variants), tone: plantTone });
   };
+
   let edgeTreeY = null;
   // 덤불 자리: 대개 덤불이고, 가끔 용설란(유카)이 대신 선다
   const bushAt = (x, y, big = 1) => {
