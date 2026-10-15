@@ -1067,6 +1067,34 @@ function createFoliage(rnd, { width, height, dot, cr, inLobe }) {
         gx: px / hw, gy: 1 + 2 * py / height, keep: rnd(), toneR: rnd(),
       });
   }
+  // 테두리 점: 이웃 점이 한쪽으로만 몰려 있으면 실루엣 가장자리. 안쪽 점은 이웃이 사방에 고르게 있어서 걸리지 않는다
+  const R = dot * 3.6, cell = R, cols = new Map(), key = (i, j) => i * 100003 + j;
+  for (const l of leaves) { const k = key(Math.floor(l.x / cell), Math.floor(l.y / cell)); (cols.get(k) ?? cols.set(k, []).get(k)).push(l); }
+  for (const l of leaves) {
+    const ci = Math.floor(l.x / cell), cj = Math.floor(l.y / cell);
+    let n = 0, sx = 0, sy = 0;
+    for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) {
+      for (const o of cols.get(key(i, j)) ?? []) {
+        const dx = o.x - l.x, dy = o.y - l.y;
+        if (o !== l && dx * dx + dy * dy < R * R) { n++; sx += dx; sy += dy; }
+      }
+    }
+    // 이웃이 몰린 반대쪽(바깥 방향)으로 조금 나간 자리가 송이 밖이어야 진짜 테두리 (안쪽 빈틈 옆 점은 제외)
+    const m = Math.hypot(sx, sy) || 1;
+    l.edge = (n < 3 || m / (n * R) > 0.2) && !clumpAt(l.x - sx / m * dot * 2.5, l.y - sy / m * dot * 2.5);
+  }
+  // 바탕 원 반지름: 테두리 띠(테두리 점 + 그 안쪽 한두 줄)는 바탕을 점 밑에 완전히 숨기고, 그 안쪽만 점 사이 틈을 메울 만큼(1.85점).
+  // → 실루엣은 잎 점으로만 끝나고, 짙은 바탕이 테두리나 점 둘레의 고리로 보이지 않는다
+  const full = dot * 1.85;
+  for (const l of leaves) {
+    let d = l.edge ? 0 : Infinity;
+    const ci = Math.floor(l.x / cell), cj = Math.floor(l.y / cell);
+    if (!l.edge) for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) {
+      for (const o of cols.get(key(i, j)) ?? []) if (o.edge) d = Math.min(d, Math.hypot(o.x - l.x, o.y - l.y));
+    }
+    l.rim = d < dot * 3.2;                 // 테두리 띠: 숨기지 않고(어두운 쪽은 가장 어두운 잎 색) 바탕도 안 보이게
+    l.back = l.rim ? l.r * 0.75 : full;
+  }
   return leaves;
 }
 
@@ -1075,7 +1103,8 @@ function drawFoliage(ctx, leaves, dot, mass, colors, light) {
   ctx.fillStyle = mass;
   ctx.beginPath();
   // 반지름은 점 사이 최대 빈자리(= 최소 간격 1.75점)보다 조금 크게 → 틈으로 하늘·땅이 비치지 않는다
-  for (const l of leaves) { const r = Math.max(l.r * 1.35, dot * 1.85); ctx.moveTo(l.x + r, l.y); ctx.arc(l.x, l.y, r, 0, Math.PI * 2); }
+  // 테두리 점은 바탕을 점 크기 그대로 → 실루엣이 잎 점 자체로 끝난다
+  for (const l of leaves) { const r = l.back; ctx.moveTo(l.x + r, l.y); ctx.arc(l.x, l.y, r, 0, Math.PI * 2); }
   ctx.fill();
   const n = colors.length;
   // 송이 하나하나는 거의 위에서 빛을 받는다 (옆 빛을 그대로 쓰면 송이가 비스듬한 줄무늬처럼 보인다)
@@ -1083,7 +1112,8 @@ function drawFoliage(ctx, leaves, dot, mass, colors, light) {
   for (const l of leaves) {
     const lit = clamp01(0.42 + 0.6 * (l.cx * clx + l.cy * cly) + 0.18 * (l.lx * light.x + l.ly * light.y) + 0.25 * (l.gx * light.x + l.gy * light.y));
     // 보일지는 거의 밝기로만 정한다 (무작위는 조금) → 송이마다 밝은 윗부분과 어두운 틈이 또렷하다
-    l.tone = lit < 0.2 + l.keep * 0.16 ? -1 : Math.min(n - 1, Math.floor(clamp01((lit - 0.2) * 1.15 + (l.toneR - 0.5) * 0.08) * n));
+    l.tone = Math.min(n - 1, Math.floor(clamp01((lit - 0.2) * 1.15 + (l.toneR - 0.5) * 0.08) * n));
+    if (lit < 0.2 + l.keep * 0.16 && !l.rim) l.tone = -1;      // 테두리 띠의 점은 숨기지 않는다 (어두운 쪽은 가장 어두운 잎 색)
   }
   colors.forEach((col, k) => {
     ctx.fillStyle = col;
