@@ -1391,8 +1391,8 @@ function drawRoundTree(ctx, tr, x, y, opts = {}) {
   if (typeof document === 'undefined') { drawFoliage(ctx, tr.leaves, tr.dot, P.mass, P.leaves, light); ctx.restore(); return; }
   const m = ctx.getTransform(), k = Math.hypot(m.a, m.b) || 1;
   const sp = treeSprite(tr, Math.min(3, Math.ceil(k * 2) / 2), light);
-  const lean = wind * tr.height * 0.012 + Math.sin(time * 1.1 + tr.phase) * tr.height * 0.002 * (0.3 + Math.abs(wind));
-  const ripple = tr.dot * 0.35 * (0.3 + Math.abs(wind));
+  const lean = wind * tr.height * 0.02 + Math.sin(time * 1.1 + tr.phase) * tr.height * 0.0035 * (0.3 + Math.abs(wind));
+  const ripple = tr.dot * 0.55 * (0.3 + Math.abs(wind));
   const step = Math.max(2, tr.dot * 1.2), S = sp.res;
   for (let sy = 0; sy < sp.h; sy += step) {
     const yy = sp.y0 + sy, up = clamp01(-yy / tr.height);                 // 0 밑동 → 1 꼭대기
