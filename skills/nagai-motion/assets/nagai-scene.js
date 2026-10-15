@@ -1081,7 +1081,8 @@ function createFoliage(rnd, { width, height, dot, cr, inLobe }) {
     }
     // 이웃이 몰린 반대쪽(바깥 방향)으로 조금 나간 자리가 송이 밖이어야 진짜 테두리 (안쪽 빈틈 옆 점은 제외)
     const m = Math.hypot(sx, sy) || 1;
-    l.edge = (n < 3 || m / (n * R) > 0.2) && !clumpAt(l.x - sx / m * dot * 2.5, l.y - sy / m * dot * 2.5);
+    // 땅 가까운 점은 테두리로 치지 않는다 → 밑바닥은 짙은 바탕이 땅선까지 꽉 차서 땅에 닿아 보인다
+    l.edge = l.y < -dot * 4 && (n < 3 || m / (n * R) > 0.2) && !clumpAt(l.x - sx / m * dot * 2.5, l.y - sy / m * dot * 2.5);
   }
   // 바탕 원 반지름: 테두리 띠(테두리 점 + 그 안쪽 한두 줄)는 바탕을 점 밑에 완전히 숨기고, 그 안쪽만 점 사이 틈을 메울 만큼(1.85점).
   // → 실루엣은 잎 점으로만 끝나고, 짙은 바탕이 테두리나 점 둘레의 고리로 보이지 않는다
@@ -1344,8 +1345,11 @@ function createRoundTree(opts = {}) {
   lobes.sort((a, b) => a.y - b.y);
   // 몸통 타원은 맨 뒤 덩어리로 친다 (밝기 기준은 나무 전체)
   const coreLobe = { x: core.x, y: core.y, r: Math.max(core.rx, core.ry) };
+  // 아랫단(치마): 잎 덩어리가 땅까지 내려와 닿는다 (공중에 뜬 공처럼 보이지 않게). 땅 쪽으로 조금 좁아진다
+  const skirtH = height * 0.4;
+  const inSkirt = (x, y, m) => y <= 0 && y > -skirtH && Math.abs(x) < hw * 0.84 * Math.sqrt(1 - 0.45 * ((y + skirtH) / skirtH) ** 2) + m;
   const inLobe = (x, y, m = 0) => {
-    let hit = ((x - core.x) / (core.rx + m)) ** 2 + ((y - core.y) / (core.ry + m)) ** 2 <= 1 ? coreLobe : null;
+    let hit = ((x - core.x) / (core.rx + m)) ** 2 + ((y - core.y) / (core.ry + m)) ** 2 <= 1 || inSkirt(x, y, m) ? coreLobe : null;
     for (const l of lobes) if ((x - l.x) ** 2 + (y - l.y) ** 2 <= (l.r + m) ** 2) hit = l;   // 가장 앞의 것
     return hit;
   };
@@ -1362,6 +1366,7 @@ function treeSprite(tr, res, light) {
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const l of tr.leaves) { const r = Math.max(l.r, l.back) + 1; x0 = Math.min(x0, l.x - r); x1 = Math.max(x1, l.x + r); y0 = Math.min(y0, l.y - r); y1 = Math.max(y1, l.y + r); }
   if (!isFinite(x0)) { x0 = -1; x1 = 1; y0 = -1; y1 = 0; }
+  y1 = Math.min(y1, 0);                       // 땅선 아래는 자른다 (바닥이 땅에 평평하게 닿는다)
   const c = document.createElement('canvas');
   c.width = Math.ceil((x1 - x0) * res); c.height = Math.ceil((y1 - y0) * res);
   const g = c.getContext('2d');
