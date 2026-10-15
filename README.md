@@ -14,11 +14,11 @@ The repository holds three things:
 
 | Afternoon | Dusk | Evening |
 |---|---|---|
-| ![Afternoon resort with a pool](docs/images/scene-afternoon.jpg) | ![Dusk street with a classic car](docs/images/scene-dusk.jpg) | ![Evening terrace above a lit city](docs/images/scene-evening.jpg) |
+| ![Afternoon beach with a convertible, round trees and a flowering bush](docs/images/scene-afternoon.jpg) | ![Dusk coast road with a classic car](docs/images/scene-dusk.jpg) | ![Evening shop with its sign lit, above the city](docs/images/scene-evening.jpg) |
 
 | Album covers | | | Mobile (9:16) |
 |---|---|---|---|
-| ![Cover in script type](docs/images/cover-dusk.jpg) | ![Cover with a red obi](docs/images/cover-afternoon.jpg) | ![Cover in serif type](docs/images/cover-evening.jpg) | ![Portrait dusk scene](docs/images/scene-mobile.jpg) |
+| ![Cover in script type](docs/images/cover-dusk.jpg) | ![Cover with a red obi](docs/images/cover-afternoon.jpg) | ![Cover in serif type](docs/images/cover-evening.jpg) | ![Portrait dusk beach](docs/images/scene-mobile.jpg) |
 
 ## Features
 

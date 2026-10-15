@@ -14,11 +14,11 @@
 
 | 오후 | 해질녘 | 저녁 |
 |---|---|---|
-| ![수영장이 있는 오후 리조트](docs/images/scene-afternoon.jpg) | ![클래식카가 선 해질녘 거리](docs/images/scene-dusk.jpg) | ![불 켜진 도시를 내려다보는 저녁 테라스](docs/images/scene-evening.jpg) |
+| ![오픈카와 둥근 나무, 꽃덤불이 있는 오후 해변](docs/images/scene-afternoon.jpg) | ![클래식카가 선 해질녘 해안 도로](docs/images/scene-dusk.jpg) | ![도시를 내려다보는 불 켜진 간판 가게, 저녁](docs/images/scene-evening.jpg) |
 
 | 앨범 커버 | | | 모바일 (9:16) |
 |---|---|---|---|
-| ![필기체 커버](docs/images/cover-dusk.jpg) | ![빨간 띠지 커버](docs/images/cover-afternoon.jpg) | ![세리프 커버](docs/images/cover-evening.jpg) | ![세로 해질녘 장면](docs/images/scene-mobile.jpg) |
+| ![필기체 커버](docs/images/cover-dusk.jpg) | ![빨간 띠지 커버](docs/images/cover-afternoon.jpg) | ![세리프 커버](docs/images/cover-evening.jpg) | ![세로 해질녘 해변](docs/images/scene-mobile.jpg) |
 
 ## 기능
 
